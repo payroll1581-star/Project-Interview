@@ -91,8 +91,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'UPDATE_INTERVIEW', id, patch: { status: 'Cancelled' } });
     };
 
-    const completeInterview: AppDataContextValue['completeInterview'] = (id) => {
-      dispatch({ type: 'UPDATE_INTERVIEW', id, patch: { status: 'Completed' } });
+    const completeInterview: AppDataContextValue['completeInterview'] = (id, feedback) => {
+      const patch: Partial<Interview> = { status: 'Completed' };
+      if (feedback?.rating) patch.rating = feedback.rating;
+      if (feedback?.notes) patch.notes = feedback.notes;
+      dispatch({ type: 'UPDATE_INTERVIEW', id, patch });
     };
 
     const getInterviewsForCandidate = (candidateId: string) =>

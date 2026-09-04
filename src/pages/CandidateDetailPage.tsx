@@ -8,6 +8,7 @@ import { CandidateStatusSelect } from '../components/candidates/CandidateStatusS
 import { CandidateFormModal } from '../components/candidates/CandidateFormModal';
 import { ScheduleInterviewForm } from '../components/interviews/ScheduleInterviewForm';
 import { InterviewList } from '../components/interviews/InterviewList';
+import { StarRating } from '../components/ui/StarRating';
 import { formatDate } from '../lib/date';
 
 export function CandidateDetailPage() {
@@ -32,6 +33,10 @@ export function CandidateDetailPage() {
   }
 
   const interviews = getInterviewsForCandidate(candidate.id);
+  const ratings = interviews
+    .filter((i) => i.status === 'Completed' && typeof i.rating === 'number')
+    .map((i) => i.rating as number);
+  const avgRating = ratings.length ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -100,8 +105,16 @@ export function CandidateDetailPage() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex items-center justify-between">
           <CardTitle>Interview history</CardTitle>
+          {avgRating !== null && (
+            <div className="flex items-center gap-2">
+              <StarRating value={Math.round(avgRating)} size={14} />
+              <span className="text-xs text-slate-500">
+                {avgRating.toFixed(1)} / 5 ({ratings.length} rated)
+              </span>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="px-0 py-0">
           <InterviewList

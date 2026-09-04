@@ -46,6 +46,7 @@ export const interviews: Interview[] = [
     type: 'Final',
     status: 'Completed',
     notes: 'Great presentation, moving to offer.',
+    rating: 5,
   },
   {
     id: 'i5',
@@ -56,6 +57,7 @@ export const interviews: Interview[] = [
     type: 'Onsite',
     status: 'Completed',
     notes: 'Solid SQL skills, offer extended.',
+    rating: 4,
   },
   {
     id: 'i6',
@@ -66,6 +68,7 @@ export const interviews: Interview[] = [
     type: 'Technical',
     status: 'Completed',
     notes: 'Rejected after technical round.',
+    rating: 2,
   },
   {
     id: 'i7',
@@ -86,6 +89,7 @@ export const interviews: Interview[] = [
     type: 'Phone',
     status: 'Completed',
     notes: 'Good communication, advanced to technical round.',
+    rating: 4,
   },
   {
     id: 'i9',

@@ -12,4 +12,5 @@ export interface Interview {
   status: InterviewStatus;
   location?: string;
   notes?: string;
+  rating?: number;
 }

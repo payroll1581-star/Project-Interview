@@ -11,7 +11,7 @@ export interface AppDataContextValue {
   scheduleInterview: (input: Omit<Interview, 'id' | 'status'>) => Interview;
   updateInterview: (id: string, patch: Partial<Interview>) => void;
   cancelInterview: (id: string) => void;
-  completeInterview: (id: string) => void;
+  completeInterview: (id: string, feedback?: { rating?: number; notes?: string }) => void;
   getInterviewsForCandidate: (candidateId: string) => Interview[];
   upcomingInterviews: Interview[];
   interviewsThisWeek: Interview[];
