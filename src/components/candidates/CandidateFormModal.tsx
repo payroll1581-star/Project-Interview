@@ -56,8 +56,10 @@ export function CandidateFormModal({ open, onClose, candidate }: CandidateFormMo
 function CandidateForm({ onClose, candidate }: { onClose: () => void; candidate?: Candidate }) {
   const { addCandidate, updateCandidate } = useAppData();
   const [form, setForm] = useState<FormState>(() => toFormState(candidate));
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const payload = {
       name: form.name,
@@ -68,12 +70,20 @@ function CandidateForm({ onClose, candidate }: { onClose: () => void; candidate?
       resumeUrl: form.resumeUrl || undefined,
       notes: form.notes || undefined,
     };
-    if (candidate) {
-      updateCandidate(candidate.id, payload);
-    } else {
-      addCandidate(payload);
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      if (candidate) {
+        await updateCandidate(candidate.id, payload);
+      } else {
+        await addCandidate(payload);
+      }
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    } finally {
+      setIsSubmitting(false);
     }
-    onClose();
   }
 
   return (
@@ -128,11 +138,14 @@ function CandidateForm({ onClose, candidate }: { onClose: () => void; candidate?
         value={form.notes}
         onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
       />
+      {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit">{candidate ? 'Save changes' : 'Add candidate'}</Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {candidate ? 'Save changes' : 'Add candidate'}
+        </Button>
       </div>
     </form>
   );

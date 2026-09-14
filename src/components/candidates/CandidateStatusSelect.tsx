@@ -9,7 +9,11 @@ export function CandidateStatusSelect({ candidateId, status }: { candidateId: st
     <Select
       label="Status"
       value={status}
-      onChange={(e) => updateCandidateStatus(candidateId, e.target.value as CandidateStatus)}
+      onChange={(e) =>
+        updateCandidateStatus(candidateId, e.target.value as CandidateStatus).catch((err: Error) =>
+          alert(err.message),
+        )
+      }
     >
       {candidateStatusOptions.map((option) => (
         <option key={option} value={option}>

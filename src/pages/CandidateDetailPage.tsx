@@ -8,7 +8,6 @@ import { CandidateStatusSelect } from '../components/candidates/CandidateStatusS
 import { CandidateFormModal } from '../components/candidates/CandidateFormModal';
 import { ScheduleInterviewForm } from '../components/interviews/ScheduleInterviewForm';
 import { InterviewList } from '../components/interviews/InterviewList';
-import { StarRating } from '../components/ui/StarRating';
 import { formatDate } from '../lib/date';
 
 export function CandidateDetailPage() {
@@ -33,10 +32,12 @@ export function CandidateDetailPage() {
   }
 
   const interviews = getInterviewsForCandidate(candidate.id);
-  const ratings = interviews
-    .filter((i) => i.status === 'Completed' && typeof i.rating === 'number')
-    .map((i) => i.rating as number);
-  const avgRating = ratings.length ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length : null;
+  const scoreRatios = interviews
+    .filter((i) => i.status === 'Completed' && i.evaluation)
+    .map((i) => i.evaluation!.totalScore / i.evaluation!.maxScore);
+  const avgScorePercent = scoreRatios.length
+    ? (scoreRatios.reduce((sum, r) => sum + r, 0) / scoreRatios.length) * 100
+    : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -107,12 +108,10 @@ export function CandidateDetailPage() {
       <Card>
         <CardHeader className="flex items-center justify-between">
           <CardTitle>Interview history</CardTitle>
-          {avgRating !== null && (
+          {avgScorePercent !== null && (
             <div className="flex items-center gap-2">
-              <StarRating value={Math.round(avgRating)} size={14} />
-              <span className="text-xs text-slate-500">
-                {avgRating.toFixed(1)} / 5 ({ratings.length} rated)
-              </span>
+              <span className="text-xs font-medium text-slate-700">{avgScorePercent.toFixed(1)}%</span>
+              <span className="text-xs text-slate-500">avg. of {scoreRatios.length} evaluated</span>
             </div>
           )}
         </CardHeader>

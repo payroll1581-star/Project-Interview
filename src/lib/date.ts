@@ -17,6 +17,11 @@ export function formatDateTime(iso: string): string {
   return `${formatDate(iso)}, ${formatTime(iso)}`;
 }
 
+export function formatShortDateTime(iso: string): string {
+  const shortDate = new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return `${shortDate}, ${formatTime(iso)}`;
+}
+
 function startOfWeek(date: Date): Date {
   const d = new Date(date);
   const day = d.getDay();

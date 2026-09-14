@@ -4,22 +4,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A frontend-only Interview Management System: candidate tracking, interview scheduling, and a dashboard. Vite + React 19 + TypeScript + Tailwind CSS v4. There is no backend — all data lives in-memory, seeded from mock fixtures and mutated through React state for the lifetime of the page.
+An Interview Management System: candidate tracking, interview scheduling, and a dashboard. Vite + React 19 + TypeScript + Tailwind CSS v4 on the frontend, backed by a small Node/Express + SQLite (`better-sqlite3`) API in `server/`. Data persists in `server/data/app.db` (gitignored) across restarts — it is no longer in-memory mock state.
 
 ## Commands
 
-- `npm run dev` — start the Vite dev server
-- `npm run build` — type-check (`tsc -b`) then production build (`vite build`); run this to verify changes compile, since there is no test suite
-- `npm run lint` — run oxlint (config in `.oxlintrc.json`, plugins: react, typescript, oxc)
-- `npm run preview` — preview the production build
+- `npm run dev` — start the Vite dev server (frontend only)
+- `npm run server` — start the Express API server (`server/index.js`, default port 3001)
+- `npm run dev:all` — run both of the above together via `concurrently`
+- `npm run db:seed` — seed `server/data/app.db` from the fixture data baked into `server/seed.js` (idempotent — no-ops if the `users` table isn't empty; delete the `.db` file to reseed from scratch)
+- `npm run build` — type-check (`tsc -b`) then production build (`vite build`) for the frontend; run this to verify frontend changes compile, since there is no test suite
+- `npm run lint` — run oxlint (config in `.oxlintrc.json`, plugins: react, typescript, oxc) — frontend only, does not lint `server/`
+- `npm run preview` — preview the production frontend build
 
-There are no tests in this repo.
+The frontend talks to the API at `/api/*`, proxied to `http://localhost:3001` in dev by `vite.config.ts`'s `server.proxy`. Both `npm run dev` and `npm run server` (or `npm run dev:all`) must be running for the app to work. There are no automated tests in this repo.
+
+## Backend (`server/`)
+
+Plain ESM JavaScript, no build step, no TypeScript, no ORM — see `server/db.js` (opens the SQLite connection and applies `server/schema.sql` on startup), `server/routes/*.js` (one router per resource: `auth`, `candidates`, `interviews`, `users`), and `server/middleware/auth.js` (`requireAuth`/`requireRole` guard using opaque session tokens stored in the `sessions` table, not JWTs). Because `better-sqlite3` and `bcryptjs`'s sync API are used throughout, route handlers are synchronous — no `async`/`await` needed in `server/`.
+
+`Interview.evaluation` (one optional evaluation per interview) is flattened onto nullable `eval_*` columns on the `interviews` table rather than a separate table; `server/lib/serialize.js` reconstructs the nested shape the frontend's `Interview` type expects. `Interview.interviewerIds` is backed by the `interview_interviewers` join table.
+
+The business rule that scheduling an interview auto-updates the candidate's status to `'Interview Scheduled'` (unless already `Offer`/`Rejected`) now lives server-side in `server/routes/interviews.js`'s `POST /` handler, inside one `db.transaction(...)`. Authorization mirrors what the UI already enforced: candidate/interview/user *mutations* are admin-only except completing an interview (`POST /api/interviews/:id/complete`), which is also allowed for an interviewer assigned to that interview.
 
 ## Architecture
 
-### Data flow: single context, no backend
+### Data flow: single context backed by the API
 
-All app state (`candidates`, `interviews`) lives in one `useReducer` inside `src/context/AppDataContext.tsx`, seeded from `src/data/candidates.ts` / `src/data/interviews.ts`. Components read/mutate it via the `useAppData()` hook (`src/context/useAppData.ts`), never via prop drilling or local page state for shared entities.
+App state (`candidates`, `interviews`, `users`) lives in one `useReducer` inside `src/context/AppDataContext.tsx`, populated by fetching `/api/candidates`, `/api/interviews`, `/api/users` (see `refresh()` in that file) rather than from static fixtures. Components read/mutate it via the `useAppData()` hook (`src/context/useAppData.ts`), never via prop drilling or local page state for shared entities. Every mutation function on the context (`addCandidate`, `scheduleInterview`, `cancelInterview`, etc.) is `async`: it calls the matching REST endpoint via `src/lib/api.ts`, then dispatches the same reducer action it always did using the server's response. `AuthProvider` (`src/context/AuthProvider.tsx`) calls `refresh()` after login and `clear()` after logout to load/discard this data in step with the session.
 
 The context object itself is split into `src/context/dataContext.ts` (the `createContext` call + `AppDataContextValue` type) separately from the provider component in `AppDataContext.tsx`. This split exists to satisfy oxlint's `react/only-export-components` rule (a file exporting both a component and a non-component triggers a fast-refresh warning) — keep new context values following this pattern rather than merging the files back together. Also note: `dataContext.ts`/`AppDataContext.tsx` differ only by case, which works on this case-insensitive Windows filesystem but would break on a case-sensitive one — don't introduce another filename that collides only by case.
 

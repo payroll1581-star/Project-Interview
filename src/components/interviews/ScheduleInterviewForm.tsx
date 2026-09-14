@@ -27,32 +27,43 @@ export function ScheduleInterviewForm({ open, onClose, candidateId }: ScheduleIn
 }
 
 function ScheduleForm({ onClose, candidateId }: { onClose: () => void; candidateId?: string }) {
-  const { candidates, scheduleInterview } = useAppData();
+  const { candidates, interviewers, scheduleInterview } = useAppData();
   const [selectedCandidateId, setSelectedCandidateId] = useState(candidateId ?? '');
-  const [interviewers, setInterviewers] = useState('');
+  const [interviewerIds, setInterviewerIds] = useState<string[]>([]);
   const [dateTime, setDateTime] = useState(defaultDateTime);
   const [duration, setDuration] = useState(45);
   const [type, setType] = useState<InterviewType>('Technical');
   const [location, setLocation] = useState('');
   const [notes, setNotes] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(e: FormEvent) {
+  function toggleInterviewer(id: string) {
+    setInterviewerIds((ids) => (ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]));
+  }
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!selectedCandidateId) return;
+    if (!selectedCandidateId || interviewerIds.length === 0) return;
     const isoDate = new Date(`${dateTime.date}T${dateTime.time}`).toISOString();
-    scheduleInterview({
-      candidateId: selectedCandidateId,
-      interviewers: interviewers
-        .split(',')
-        .map((name) => name.trim())
-        .filter(Boolean),
-      date: isoDate,
-      durationMinutes: duration,
-      type,
-      location: location || undefined,
-      notes: notes || undefined,
-    });
-    onClose();
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await scheduleInterview({
+        candidateId: selectedCandidateId,
+        interviewerIds,
+        date: isoDate,
+        durationMinutes: duration,
+        type,
+        location: location || undefined,
+        notes: notes || undefined,
+      });
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -73,12 +84,26 @@ function ScheduleForm({ onClose, candidateId }: { onClose: () => void; candidate
           </option>
         ))}
       </Select>
-      <Input
-        label="Interviewer(s), comma separated"
-        value={interviewers}
-        onChange={(e) => setInterviewers(e.target.value)}
-        placeholder="e.g. Priya Nair, Sam Osei"
-      />
+      <div>
+        <p className="mb-1 block text-xs font-medium text-slate-700">Interviewer(s)</p>
+        <div className="flex flex-col gap-1.5 rounded-lg ring-1 ring-inset ring-slate-300 px-3 py-2">
+          {interviewers.length === 0 ? (
+            <p className="text-sm text-slate-400">No interviewer accounts yet.</p>
+          ) : (
+            interviewers.map((interviewer) => (
+              <label key={interviewer.id} className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={interviewerIds.includes(interviewer.id)}
+                  onChange={() => toggleInterviewer(interviewer.id)}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+                />
+                {interviewer.name}
+              </label>
+            ))
+          )}
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-4">
         <Input
           label="Date"
@@ -114,11 +139,14 @@ function ScheduleForm({ onClose, candidateId }: { onClose: () => void; candidate
       </div>
       <Input label="Location / meeting link" value={location} onChange={(e) => setLocation(e.target.value)} />
       <Textarea label="Notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+      {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit">Schedule interview</Button>
+        <Button type="submit" disabled={isSubmitting}>
+          Schedule interview
+        </Button>
       </div>
     </form>
   );

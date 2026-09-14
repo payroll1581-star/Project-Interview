@@ -1,14 +1,30 @@
 import { NavLink } from 'react-router';
-import { LayoutDashboard, Users, CalendarClock, Briefcase } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  CalendarClock,
+  Briefcase,
+  UserRound,
+  ClipboardList,
+  ListChecks,
+} from 'lucide-react';
 import clsx from 'clsx';
+import { useAuth } from '../../context/useAuth';
 
-const navItems = [
+const adminNavItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/candidates', label: 'Candidates', icon: Users },
   { to: '/scheduling', label: 'Scheduling', icon: CalendarClock },
+  { to: '/interviewers', label: 'Interviewers', icon: UserRound },
+  { to: '/evaluation-criteria', label: 'Evaluation Criteria', icon: ListChecks },
 ];
 
+const interviewerNavItems = [{ to: '/my-interviews', label: 'My Interviews', icon: ClipboardList }];
+
 export function Sidebar() {
+  const { currentUser } = useAuth();
+  const navItems = currentUser?.role === 'interviewer' ? interviewerNavItems : adminNavItems;
+
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
       <div className="flex items-center gap-2 px-5 py-5">

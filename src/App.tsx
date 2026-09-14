@@ -1,10 +1,13 @@
 import { AppDataProvider } from './context/AppDataContext';
+import { AuthProvider } from './context/AuthProvider';
 import { AppRoutes } from './routes';
 
 function App() {
   return (
     <AppDataProvider>
-      <AppRoutes />
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
     </AppDataProvider>
   );
 }
