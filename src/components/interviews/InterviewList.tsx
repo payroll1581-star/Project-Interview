@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } fro
 import { InterviewStatusPill, EvaluationResultPill } from '../ui/StatusPill';
 import { EmptyState } from '../ui/EmptyState';
 import { Button } from '../ui/Button';
+import { ResumeLink } from '../ui/ResumeLink';
 import { CompleteInterviewForm } from './CompleteInterviewForm';
 import { formatDateTime, formatShortDateTime } from '../../lib/date';
 
@@ -122,16 +123,7 @@ export function InterviewList({
                         )}
                       </div>
                     )}
-                    {candidate?.resumeUrl && (
-                      <a
-                        href={candidate.resumeUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs font-medium text-indigo-600 hover:underline"
-                      >
-                        View resume
-                      </a>
-                    )}
+                    <ResumeLink url={candidate?.resumeUrl} variant="compact" />
                     {interview.evaluation && (
                       <Link
                         to={`/candidates/${interview.candidateId}/interviews/${interview.id}/appraisal`}

@@ -17,3 +17,12 @@ export const solidColorClasses: Record<BadgeColor, string> = {
   red: 'bg-red-500',
   violet: 'bg-violet-500',
 };
+
+export const strokeColorClasses: Record<BadgeColor, string> = {
+  slate: 'stroke-slate-400',
+  blue: 'stroke-blue-500',
+  amber: 'stroke-amber-500',
+  emerald: 'stroke-emerald-500',
+  red: 'stroke-red-500',
+  violet: 'stroke-violet-500',
+};

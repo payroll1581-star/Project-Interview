@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { ArrowLeft, CalendarPlus, Pencil, FileText } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, Pencil } from 'lucide-react';
 import { useAppData } from '../context/useAppData';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { ResumeLink } from '../components/ui/ResumeLink';
 import { CandidateStatusSelect } from '../components/candidates/CandidateStatusSelect';
 import { CandidateFormModal } from '../components/candidates/CandidateFormModal';
 import { ScheduleInterviewForm } from '../components/interviews/ScheduleInterviewForm';
@@ -81,17 +82,7 @@ export function CandidateDetailPage() {
               <p className="text-xs text-slate-400">Applied on</p>
               <p className="text-slate-800">{formatDate(candidate.createdAt)}</p>
             </div>
-            {candidate.resumeUrl && (
-              <a
-                href={candidate.resumeUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex w-fit items-center gap-1.5 text-sm text-indigo-600 hover:underline"
-              >
-                <FileText size={14} />
-                View resume
-              </a>
-            )}
+            <ResumeLink url={candidate.resumeUrl} />
             {candidate.notes && (
               <div>
                 <p className="text-xs text-slate-400">Notes</p>

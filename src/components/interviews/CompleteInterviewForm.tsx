@@ -1,12 +1,15 @@
-import { useState, type FormEvent } from 'react';
+import { Fragment, useState, type FormEvent } from 'react';
 import { Modal } from '../ui/Modal';
 import { Input, Textarea } from '../ui/Input';
 import { Button } from '../ui/Button';
-import { StarRating } from '../ui/StarRating';
+import { ScoreGridHeader, ScoreGridRow } from '../ui/ScoreGrid';
+import { CircularGauge } from '../ui/CircularGauge';
 import { EvaluationResultPill } from '../ui/StatusPill';
+import { ResumeLink } from '../ui/ResumeLink';
+import { strokeColorClasses } from '../ui/badgeStyles';
 import { useAppData } from '../../context/useAppData';
 import { useAuth } from '../../context/useAuth';
-import { computeEvaluationResult, evaluationResultGuide } from '../../lib/status';
+import { computeEvaluationResult, evaluationResultGuide, evaluationResultStyles } from '../../lib/status';
 import { formatDate } from '../../lib/date';
 
 interface CompleteInterviewFormProps {
@@ -17,7 +20,7 @@ interface CompleteInterviewFormProps {
 
 export function CompleteInterviewForm({ open, onClose, interviewId }: CompleteInterviewFormProps) {
   return (
-    <Modal open={open} onClose={onClose} title="Complete Interview">
+    <Modal open={open} onClose={onClose} title="Complete Interview" size="2xl">
       {open && <CompleteForm onClose={onClose} interviewId={interviewId} />}
     </Modal>
   );
@@ -46,6 +49,7 @@ function CompleteForm({ onClose, interviewId }: { onClose: () => void; interview
   const totalScore = allCriteria.reduce((sum, c) => sum + (scores[c.id] ?? 0), 0);
   const maxScore = allCriteria.length * 5;
   const liveResult = computeEvaluationResult(totalScore, maxScore);
+  const livePercent = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
   const isComplete =
     allCriteria.length > 0 && allCriteria.every((c) => (scores[c.id] ?? 0) > 0) && signature.trim() !== '';
 
@@ -106,42 +110,46 @@ function CompleteForm({ onClose, interviewId }: { onClose: () => void; interview
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Interview By</p>
             <p className="text-slate-800">{interviewerNames}</p>
           </div>
+          <ResumeLink url={candidate?.resumeUrl} className="col-span-2" />
         </div>
       )}
 
-      <div className="flex flex-col gap-4">
-        {evaluationTemplate.map((section) => (
-          <div key={section.id} className="flex flex-col gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{section.name}</p>
-            <div className="flex flex-col gap-3">
+      <div className="overflow-hidden rounded-lg border border-slate-200">
+        <div className="divide-y divide-slate-200">
+          <ScoreGridHeader />
+          {evaluationTemplate.map((section) => (
+            <Fragment key={section.id}>
+              <p className="bg-slate-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {section.name}
+              </p>
               {section.criteria.map((criterion) => (
-                <div key={criterion.id} className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-medium text-slate-700">{criterion.name}</p>
-                  <StarRating
-                    value={scores[criterion.id] ?? 0}
-                    onChange={(value) => setScores((prev) => ({ ...prev, [criterion.id]: value }))}
-                  />
-                </div>
+                <ScoreGridRow
+                  key={criterion.id}
+                  label={criterion.name}
+                  value={scores[criterion.id] ?? 0}
+                  onChange={(value) => setScores((prev) => ({ ...prev, [criterion.id]: value }))}
+                />
               ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex items-center justify-between border-t border-slate-100 pt-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total Evaluation</p>
-        <p className="text-sm font-semibold text-slate-800">
-          {totalScore} / {maxScore}
-        </p>
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-slate-700">Result</p>
-          <EvaluationResultPill result={liveResult} />
+            </Fragment>
+          ))}
         </div>
-        <p className="mt-1 text-[11px] text-slate-400">Guide: {evaluationResultGuide}</p>
       </div>
+
+      <div className="sticky bottom-0 -mx-5 -mb-4 flex items-center justify-between gap-4 border-t border-slate-200 bg-white px-5 py-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total Evaluation</p>
+          <p className="text-lg font-semibold text-slate-800">
+            {totalScore} <span className="text-sm font-normal text-slate-400">/ {maxScore}</span>
+          </p>
+          <div className="mt-1">
+            <EvaluationResultPill result={liveResult} />
+          </div>
+        </div>
+        <CircularGauge percent={livePercent} strokeClassName={strokeColorClasses[evaluationResultStyles[liveResult]]}>
+          <span className="text-sm font-semibold text-slate-700">{Math.round(livePercent)}%</span>
+        </CircularGauge>
+      </div>
+      <p className="text-[11px] text-slate-400">Guide: {evaluationResultGuide}</p>
 
       <Input
         label="Interviewer Signature"
