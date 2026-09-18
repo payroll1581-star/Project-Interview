@@ -7,7 +7,7 @@ import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const SESSION_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000; // effectively permanent
 
 const getUserByEmail = db.prepare('SELECT * FROM users WHERE email = ?');
 const insertSession = db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)');
