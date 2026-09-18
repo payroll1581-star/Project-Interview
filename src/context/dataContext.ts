@@ -8,6 +8,12 @@ export interface EvaluationSubmission {
   interviewerPosition?: string;
 }
 
+export interface NotifyRecipientResult {
+  email: string;
+  status: 'sent' | 'logged' | 'failed';
+  error?: string;
+}
+
 export interface InterviewTrendPoint {
   month: string;
   [position: string]: number | string;
@@ -35,7 +41,7 @@ export interface AppDataContextValue {
   scheduleInterview: (input: Omit<Interview, 'id' | 'status'>) => Promise<Interview>;
   updateInterview: (id: string, patch: Partial<Interview>) => Promise<void>;
   cancelInterview: (id: string) => Promise<void>;
-  notifyInterview: (id: string, message?: string) => Promise<{ recipients: string[]; sent: boolean }>;
+  notifyInterview: (id: string, message?: string) => Promise<{ results: NotifyRecipientResult[] }>;
   completeInterview: (id: string, evaluation: EvaluationSubmission) => Promise<void>;
   getInterviewsForCandidate: (candidateId: string) => Interview[];
   getInterviewsForInterviewer: (interviewerId: string) => Interview[];

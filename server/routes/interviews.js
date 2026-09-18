@@ -42,8 +42,20 @@ function loadInterview(id) {
   return serializeInterview(row, interviewerIds, getScoresForInterview.all(id));
 }
 
+// Interview dates are stored as UTC; format in the organisation's zone, not the server's.
+const APP_TIMEZONE = process.env.APP_TIMEZONE || 'Asia/Bangkok';
+
 function formatInterviewDateTime(iso) {
-  return new Date(iso).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' });
+  return new Date(iso).toLocaleString('en-US', {
+    timeZone: APP_TIMEZONE,
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  });
 }
 
 function buildNotificationEmail({ interviewer, candidate, interview, message }) {
@@ -137,6 +149,9 @@ router.post('/:id/notify', requireRole('admin'), async (req, res) => {
   if (!existing) {
     return res.status(404).json({ error: 'Interview not found.' });
   }
+  if (existing.status !== 'Scheduled') {
+    return res.status(409).json({ error: `Cannot send a reminder for an interview with status '${existing.status}'.` });
+  }
 
   const interviewers = getInterviewerIds
     .all(req.params.id)
@@ -149,18 +164,27 @@ router.post('/:id/notify', requireRole('admin'), async (req, res) => {
   const candidate = getCandidate.get(existing.candidate_id);
   const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
 
-  const results = await Promise.all(
-    interviewers.map(async (interviewer) => {
-      const { sent } = await sendMail({
+  const subject = `Interview reminder: ${candidate?.name ?? 'Candidate'} on ${formatInterviewDateTime(existing.date)}`;
+  const settled = await Promise.allSettled(
+    interviewers.map((interviewer) =>
+      sendMail({
         to: interviewer.email,
-        subject: `Interview reminder: ${candidate?.name ?? 'Candidate'} on ${formatInterviewDateTime(existing.date)}`,
+        subject,
         text: buildNotificationEmail({ interviewer, candidate, interview: existing, message }),
-      });
-      return { email: interviewer.email, sent };
-    }),
+      }),
+    ),
   );
 
-  res.json({ recipients: results.map((r) => r.email), sent: results.every((r) => r.sent) });
+  const results = settled.map((outcome, index) => {
+    const email = interviewers[index].email;
+    if (outcome.status === 'rejected') {
+      console.error(`[mailer] Failed to send to ${email}:`, outcome.reason);
+      return { email, status: 'failed', error: outcome.reason?.message ?? 'Unknown error' };
+    }
+    return { email, status: outcome.value.sent ? 'sent' : 'logged' };
+  });
+
+  res.json({ results });
 });
 
 router.post('/:id/complete', (req, res) => {

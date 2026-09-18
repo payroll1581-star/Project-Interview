@@ -3,7 +3,20 @@ import { Modal } from '../ui/Modal';
 import { Textarea } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { useAppData } from '../../context/useAppData';
+import type { NotifyRecipientResult } from '../../context/dataContext';
 import { formatDateTime } from '../../lib/date';
+
+const resultLabels: Record<NotifyRecipientResult['status'], string> = {
+  sent: 'sent',
+  logged: "logged on the server (SMTP isn't configured)",
+  failed: 'failed to send',
+};
+
+const resultClasses: Record<NotifyRecipientResult['status'], string> = {
+  sent: 'text-emerald-700',
+  logged: 'text-amber-700',
+  failed: 'text-red-600',
+};
 
 interface NotifyInterviewFormProps {
   open: boolean;
@@ -30,14 +43,14 @@ function NotifyForm({ onClose, interviewId }: { onClose: () => void; interviewId
   const [message, setMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
-  const [result, setResult] = useState<{ recipients: string[]; sent: boolean } | null>(null);
+  const [results, setResults] = useState<NotifyRecipientResult[] | null>(null);
 
   async function handleSend() {
     setError(null);
     setIsSending(true);
     try {
       const outcome = await notifyInterview(interviewId, message.trim() || undefined);
-      setResult(outcome);
+      setResults(outcome.results);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
@@ -82,23 +95,26 @@ function NotifyForm({ onClose, interviewId }: { onClose: () => void; interviewId
         placeholder="Add any extra context for the interviewer(s)..."
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        disabled={result !== null}
+        disabled={results !== null}
       />
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {result && (
-        <p className="text-sm text-emerald-700">
-          {result.sent
-            ? `Email sent to ${result.recipients.join(', ')}.`
-            : `SMTP isn't configured yet, so the email was logged on the server instead of sent (recipients: ${result.recipients.join(', ')}).`}
-        </p>
+      {results && (
+        <ul className="flex flex-col gap-1 text-sm">
+          {results.map((r) => (
+            <li key={r.email} className={resultClasses[r.status]}>
+              {r.email}: {resultLabels[r.status]}
+              {r.error ? ` (${r.error})` : ''}
+            </li>
+          ))}
+        </ul>
       )}
 
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onClose}>
-          {result ? 'Close' : 'Cancel'}
+          {results ? 'Close' : 'Cancel'}
         </Button>
-        {!result && (
+        {!results && (
           <Button type="button" disabled={interviewers.length === 0 || isSending} onClick={handleSend}>
             {isSending ? 'Sending…' : 'Send notification'}
           </Button>
