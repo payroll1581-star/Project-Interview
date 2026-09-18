@@ -8,6 +8,16 @@ export interface EvaluationSubmission {
   interviewerPosition?: string;
 }
 
+export interface InterviewTrendPoint {
+  month: string;
+  [position: string]: number | string;
+}
+
+export interface InterviewTrend {
+  data: InterviewTrendPoint[];
+  positions: string[];
+}
+
 export interface AppDataContextValue {
   candidates: Candidate[];
   interviews: Interview[];
@@ -40,6 +50,7 @@ export interface AppDataContextValue {
   upcomingInterviews: Interview[];
   interviewsThisWeek: Interview[];
   candidateStatusCounts: Record<CandidateStatus, number>;
+  interviewTrendByPosition: InterviewTrend;
 }
 
 export const AppDataContext = createContext<AppDataContextValue | null>(null);

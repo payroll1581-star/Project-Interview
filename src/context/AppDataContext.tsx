@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useReducer, useState, type ReactNode } from 'react';
 import type { AppUser, Candidate, CandidateStatus, EvaluationSection, Interview } from '../types';
 import { api } from '../lib/api';
-import { isThisWeek, sortByDateAsc } from '../lib/date';
-import { AppDataContext, type AppDataContextValue } from './dataContext';
+import { formatMonthLabel, isThisWeek, monthKey, sortByDateAsc } from '../lib/date';
+import { AppDataContext, type AppDataContextValue, type InterviewTrendPoint } from './dataContext';
 
 interface State {
   candidates: Candidate[];
@@ -216,6 +216,34 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       {} as Record<CandidateStatus, number>,
     );
 
+    const monthWindow = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      return { year: d.getFullYear(), month: d.getMonth(), key: monthKey(d.toISOString()) };
+    });
+
+    const completedWithPosition = state.interviews
+      .filter((i) => i.status === 'Completed')
+      .map((i) => ({ interview: i, candidate: state.candidates.find((c) => c.id === i.candidateId) }))
+      .filter((entry): entry is { interview: Interview; candidate: Candidate } => entry.candidate !== undefined);
+
+    const trendPositions = Array.from(new Set(completedWithPosition.map((e) => e.candidate.position))).sort();
+
+    const interviewTrendByPosition: AppDataContextValue['interviewTrendByPosition'] = {
+      positions: trendPositions,
+      data: monthWindow.map(({ year, month, key }) => {
+        const row: InterviewTrendPoint = { month: formatMonthLabel(year, month) };
+        for (const position of trendPositions) {
+          row[position] = 0;
+        }
+        for (const entry of completedWithPosition) {
+          if (monthKey(entry.interview.date) === key) {
+            row[entry.candidate.position] = (row[entry.candidate.position] as number) + 1;
+          }
+        }
+        return row;
+      }),
+    };
+
     return {
       candidates: state.candidates,
       interviews: state.interviews,
@@ -248,6 +276,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       upcomingInterviews,
       interviewsThisWeek,
       candidateStatusCounts,
+      interviewTrendByPosition,
     };
   }, [state, isLoading, error, refresh, clear]);
 

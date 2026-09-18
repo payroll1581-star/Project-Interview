@@ -1,5 +1,6 @@
 import { Users, CalendarClock, ClipboardCheck, Award } from 'lucide-react';
 import { useAppData } from '../context/useAppData';
+import { InterviewTrendChart } from '../components/dashboard/InterviewTrendChart';
 import { StatCard } from '../components/dashboard/StatCard';
 import { StatusFunnel } from '../components/dashboard/StatusFunnel';
 import { InterviewList } from '../components/interviews/InterviewList';
@@ -7,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { formatDate } from '../lib/date';
 
 export function DashboardPage() {
-  const { candidates, interviewsThisWeek, upcomingInterviews, candidateStatusCounts } = useAppData();
+  const { candidates, interviewsThisWeek, upcomingInterviews, candidateStatusCounts, interviewTrendByPosition } =
+    useAppData();
   const offers = candidateStatusCounts.Offer;
   const offerRate = candidates.length > 0 ? Math.round((offers / candidates.length) * 100) : 0;
 
@@ -53,6 +55,15 @@ export function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Interview trend by position</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <InterviewTrendChart trend={interviewTrendByPosition} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -41,3 +41,12 @@ export function isThisWeek(iso: string): boolean {
 export function sortByDateAsc<T extends { date: string }>(items: T[]): T[] {
   return [...items].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
+
+export function monthKey(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function formatMonthLabel(year: number, month: number): string {
+  return new Date(year, month, 1).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+}
