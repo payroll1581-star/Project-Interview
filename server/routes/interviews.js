@@ -4,6 +4,7 @@ import { generateId } from '../lib/ids.js';
 import { serializeInterview, serializeCandidate } from '../lib/serialize.js';
 import { computeEvaluationResult } from '../lib/evaluation.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { sendMail } from '../lib/mailer.js';
 
 const router = Router();
 
@@ -21,6 +22,7 @@ const insertInterview = db.prepare(
 );
 const insertInterviewer = db.prepare('INSERT INTO interview_interviewers (interview_id, user_id) VALUES (?, ?)');
 const getCandidate = db.prepare('SELECT * FROM candidates WHERE id = ?');
+const getUserRow = db.prepare('SELECT * FROM users WHERE id = ?');
 const updateCandidateStatus = db.prepare('UPDATE candidates SET status = ? WHERE id = ?');
 const getCriterion = db.prepare(
   `SELECT evaluation_criteria.id, evaluation_criteria.name AS criterion_name, evaluation_sections.name AS section_name
@@ -38,6 +40,26 @@ function loadInterview(id) {
   if (!row) return undefined;
   const interviewerIds = getInterviewerIds.all(id).map((r) => r.userId);
   return serializeInterview(row, interviewerIds, getScoresForInterview.all(id));
+}
+
+function formatInterviewDateTime(iso) {
+  return new Date(iso).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' });
+}
+
+function buildNotificationEmail({ interviewer, candidate, interview, message }) {
+  const lines = [
+    `Hi ${interviewer.name},`,
+    '',
+    `This is a reminder that you're scheduled to interview ${candidate?.name ?? 'a candidate'}${candidate?.position ? ` for ${candidate.position}` : ''}.`,
+    '',
+    `Date & time: ${formatInterviewDateTime(interview.date)}`,
+    `Type: ${interview.type}`,
+    interview.location ? `Location: ${interview.location}` : null,
+    '',
+    message ? `Message from the scheduler:\n${message}` : null,
+  ].filter((line) => line !== null);
+
+  return lines.join('\n');
 }
 
 router.use(requireAuth);
@@ -108,6 +130,37 @@ router.post('/:id/cancel', requireRole('admin'), (req, res) => {
   }
   db.prepare("UPDATE interviews SET status = 'Cancelled' WHERE id = ?").run(req.params.id);
   res.json(loadInterview(req.params.id));
+});
+
+router.post('/:id/notify', requireRole('admin'), async (req, res) => {
+  const existing = getInterview.get(req.params.id);
+  if (!existing) {
+    return res.status(404).json({ error: 'Interview not found.' });
+  }
+
+  const interviewers = getInterviewerIds
+    .all(req.params.id)
+    .map((r) => getUserRow.get(r.userId))
+    .filter(Boolean);
+  if (interviewers.length === 0) {
+    return res.status(400).json({ error: 'No interviewers are assigned to this interview.' });
+  }
+
+  const candidate = getCandidate.get(existing.candidate_id);
+  const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+
+  const results = await Promise.all(
+    interviewers.map(async (interviewer) => {
+      const { sent } = await sendMail({
+        to: interviewer.email,
+        subject: `Interview reminder: ${candidate?.name ?? 'Candidate'} on ${formatInterviewDateTime(existing.date)}`,
+        text: buildNotificationEmail({ interviewer, candidate, interview: existing, message }),
+      });
+      return { email: interviewer.email, sent };
+    }),
+  );
+
+  res.json({ recipients: results.map((r) => r.email), sent: results.every((r) => r.sent) });
 });
 
 router.post('/:id/complete', (req, res) => {

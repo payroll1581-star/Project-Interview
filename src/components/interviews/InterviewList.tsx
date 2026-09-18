@@ -10,6 +10,7 @@ import { EmptyState } from '../ui/EmptyState';
 import { Button } from '../ui/Button';
 import { ResumeLink } from '../ui/ResumeLink';
 import { CompleteInterviewForm } from './CompleteInterviewForm';
+import { NotifyInterviewForm } from './NotifyInterviewForm';
 import { formatDateTime, formatShortDateTime } from '../../lib/date';
 
 export function InterviewList({
@@ -27,6 +28,7 @@ export function InterviewList({
   const { currentUser } = useAuth();
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [notifyingId, setNotifyingId] = useState<string | null>(null);
   const isAdmin = currentUser?.role === 'admin';
 
   async function handleCancel(id: string) {
@@ -112,6 +114,11 @@ export function InterviewList({
                           </Button>
                         )}
                         {isAdmin && (
+                          <Button size="sm" variant="secondary" onClick={() => setNotifyingId(interview.id)}>
+                            Notify
+                          </Button>
+                        )}
+                        {isAdmin && (
                           <Button
                             size="sm"
                             variant="danger"
@@ -144,6 +151,11 @@ export function InterviewList({
         open={completingId !== null}
         onClose={() => setCompletingId(null)}
         interviewId={completingId ?? ''}
+      />
+      <NotifyInterviewForm
+        open={notifyingId !== null}
+        onClose={() => setNotifyingId(null)}
+        interviewId={notifyingId ?? ''}
       />
     </>
   );

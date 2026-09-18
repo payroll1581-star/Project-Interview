@@ -155,6 +155,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'UPDATE_INTERVIEW', id, patch: interview });
     };
 
+    const notifyInterview: AppDataContextValue['notifyInterview'] = (id, message) =>
+      api.post(`/interviews/${id}/notify`, { message });
+
     const completeInterview: AppDataContextValue['completeInterview'] = async (id, evaluation) => {
       const interview = await api.post<Interview>(`/interviews/${id}/complete`, { evaluation });
       dispatch({ type: 'UPDATE_INTERVIEW', id, patch: interview });
@@ -261,6 +264,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       scheduleInterview,
       updateInterview,
       cancelInterview,
+      notifyInterview,
       completeInterview,
       getInterviewsForCandidate,
       getInterviewsForInterviewer,
