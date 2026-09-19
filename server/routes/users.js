@@ -33,8 +33,34 @@ const countAssignments = db.prepare(
 router.use(requireAuth);
 
 router.get('/', (req, res) => {
-  const rows = req.user.role === 'admin' ? listUsers.all() : listUsersForInterviewer.all(req.user.id, req.user.id);
-  res.json(rows.map(serializeUser));
+  if (req.user.role !== 'admin') {
+    return res.json(listUsersForInterviewer.all(req.user.id, req.user.id).map(serializeUser));
+  }
+
+  const { search, limit, offset } = req.query;
+  if (!search && !limit && !offset) {
+    return res.json(listUsers.all().map(serializeUser));
+  }
+
+  const clauses = [];
+  const params = {};
+  if (search) {
+    clauses.push('(name LIKE @search OR email LIKE @search)');
+    params.search = `%${search}%`;
+  }
+  const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+
+  const total = db.prepare(`SELECT COUNT(*) AS count FROM users ${where}`).get(params).count;
+
+  let sql = `SELECT * FROM users ${where} ORDER BY rowid`;
+  if (limit) {
+    params.limit = Math.max(0, Number(limit)) || 0;
+    params.offset = Math.max(0, Number(offset) || 0);
+    sql += ' LIMIT @limit OFFSET @offset';
+  }
+
+  res.set('X-Total-Count', String(total));
+  res.json(db.prepare(sql).all(params).map(serializeUser));
 });
 
 router.post('/', requireRole('admin'), (req, res) => {

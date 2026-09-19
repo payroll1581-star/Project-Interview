@@ -78,11 +78,25 @@ function buildNotificationEmail({ interviewer, candidate, interview, message }) 
 router.use(requireAuth);
 
 router.get('/', (req, res) => {
-  const rows = listInterviews.all();
-  const visibleRows =
+  const { status, limit, offset } = req.query;
+  const rows = status
+    ? db.prepare('SELECT * FROM interviews WHERE status = ? ORDER BY date ASC').all(status)
+    : listInterviews.all();
+
+  let visibleRows =
     req.user.role === 'admin'
       ? rows
       : rows.filter((row) => getInterviewerIds.all(row.id).some((r) => r.userId === req.user.id));
+
+  if (status || limit || offset) {
+    res.set('X-Total-Count', String(visibleRows.length));
+  }
+  if (limit) {
+    const lim = Math.max(0, Number(limit)) || 0;
+    const off = Math.max(0, Number(offset) || 0);
+    visibleRows = visibleRows.slice(off, off + lim);
+  }
+
   res.json(
     visibleRows.map((row) =>
       serializeInterview(

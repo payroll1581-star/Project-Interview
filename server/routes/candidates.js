@@ -29,9 +29,40 @@ const countInterviewsForCandidate = db.prepare(
 router.use(requireAuth);
 
 router.get('/', (req, res) => {
-  const rows =
-    req.user.role === 'admin' ? listCandidates.all() : listCandidatesForInterviewer.all(req.user.id);
-  res.json(rows.map(serializeCandidate));
+  if (req.user.role !== 'admin') {
+    return res.json(listCandidatesForInterviewer.all(req.user.id).map(serializeCandidate));
+  }
+
+  const { search, status, limit, offset } = req.query;
+  if (!search && !status && !limit && !offset) {
+    return res.json(listCandidates.all().map(serializeCandidate));
+  }
+
+  // Built per-request (rather than pre-prepared) since the WHERE clause is optional --
+  // values are still passed as bound params, so this stays injection-safe.
+  const clauses = [];
+  const params = {};
+  if (search) {
+    clauses.push('(name LIKE @search OR email LIKE @search)');
+    params.search = `%${search}%`;
+  }
+  if (status) {
+    clauses.push('status = @status');
+    params.status = status;
+  }
+  const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+
+  const total = db.prepare(`SELECT COUNT(*) AS count FROM candidates ${where}`).get(params).count;
+
+  let sql = `SELECT * FROM candidates ${where} ORDER BY created_at DESC`;
+  if (limit) {
+    params.limit = Math.max(0, Number(limit)) || 0;
+    params.offset = Math.max(0, Number(offset) || 0);
+    sql += ' LIMIT @limit OFFSET @offset';
+  }
+
+  res.set('X-Total-Count', String(total));
+  res.json(db.prepare(sql).all(params).map(serializeCandidate));
 });
 
 router.post('/', requireRole('admin'), (req, res) => {
