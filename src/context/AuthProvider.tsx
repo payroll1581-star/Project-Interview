@@ -16,7 +16,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .get<{ user: AppUser }>('/auth/me')
       .then(async ({ user }) => {
         setCurrentUser(user);
-        await refresh();
+        // A failed data refresh (e.g. the API is temporarily unreachable) shouldn't log
+        // out an otherwise-valid session -- AppDataContext surfaces that failure itself.
+        await refresh().catch(() => {});
       })
       .catch(() => {
         setToken(null);
@@ -36,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         setToken(token);
         setCurrentUser(user);
-        await refresh();
+        await refresh().catch(() => {});
         return user;
       },
       logout: async () => {
