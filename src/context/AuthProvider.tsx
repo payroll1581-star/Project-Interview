@@ -45,6 +45,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCurrentUser(null);
         clear();
       },
+      changePassword: async (currentPassword: string, newPassword: string) => {
+        await api.patch('/users/me/password', { currentPassword, newPassword });
+      },
     }),
     [currentUser, isLoading, refresh, clear],
   );

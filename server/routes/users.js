@@ -23,6 +23,7 @@ const insertUser = db.prepare(
    VALUES (@id, @name, @email, @passwordHash, @role, @position)`,
 );
 const deleteUser = db.prepare('DELETE FROM users WHERE id = ?');
+const updateUserPassword = db.prepare('UPDATE users SET password_hash = ? WHERE id = ?');
 const countAdmins = db.prepare("SELECT COUNT(*) AS count FROM users WHERE role = 'admin'");
 const countAssignments = db.prepare(
   'SELECT COUNT(*) AS count FROM interview_interviewers WHERE user_id = ?',
@@ -55,6 +56,24 @@ router.post('/', requireRole('admin'), (req, res) => {
   insertUser.run(user);
 
   res.status(201).json({ ...serializeUser(getUser.get(user.id)), password });
+});
+
+router.patch('/me/password', (req, res) => {
+  const { currentPassword, newPassword } = req.body ?? {};
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'currentPassword and newPassword are required.' });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+  }
+
+  const user = getUser.get(req.user.id);
+  if (!bcrypt.compareSync(currentPassword, user.password_hash)) {
+    return res.status(401).json({ error: 'Current password is incorrect.' });
+  }
+
+  updateUserPassword.run(bcrypt.hashSync(newPassword, 10), req.user.id);
+  res.status(204).end();
 });
 
 router.delete('/:id', requireRole('admin'), (req, res) => {

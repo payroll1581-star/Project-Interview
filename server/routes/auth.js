@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
 import { db } from '../db.js';
 import { generateId } from '../lib/ids.js';
@@ -9,11 +10,19 @@ const router = Router();
 
 const SESSION_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000; // effectively permanent
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts. Please try again in a few minutes.' },
+});
+
 const getUserByEmail = db.prepare('SELECT * FROM users WHERE email = ?');
 const insertSession = db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)');
 const deleteSession = db.prepare('DELETE FROM sessions WHERE token = ?');
 
-router.post('/login', (req, res) => {
+router.post('/login', loginLimiter, (req, res) => {
   const { email, password } = req.body ?? {};
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required.' });

@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../../context/useAuth';
 import { Button } from '../ui/Button';
+import { ChangePasswordForm } from './ChangePasswordForm';
 
 const titles: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -21,6 +23,7 @@ export function Topbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, logout } = useAuth();
+  const [changingPassword, setChangingPassword] = useState(false);
 
   function handleLogout() {
     logout();
@@ -32,10 +35,14 @@ export function Topbar() {
       <h1 className="text-base font-semibold text-slate-900">{resolveTitle(location.pathname)}</h1>
       <div className="flex items-center gap-3">
         {currentUser && <span className="text-sm text-slate-500">{currentUser.name}</span>}
+        <Button variant="ghost" size="sm" onClick={() => setChangingPassword(true)}>
+          Change password
+        </Button>
         <Button variant="ghost" size="sm" onClick={handleLogout}>
           Log out
         </Button>
       </div>
+      <ChangePasswordForm open={changingPassword} onClose={() => setChangingPassword(false)} />
     </header>
   );
 }
