@@ -53,7 +53,7 @@ function InterviewerForm({ onClose }: { onClose: () => void }) {
             <span className="font-medium">Email:</span> {created.email}
           </p>
           <p>
-            <span className="font-medium">Password:</span> {created.password}
+            <span className="font-medium">Password:</span> {password}
           </p>
         </div>
         <div className="flex justify-end pt-1">

@@ -109,8 +109,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
     const addInterviewer: AppDataContextValue['addInterviewer'] = async (input) => {
       const user = await api.post<AppUser>('/users', input);
-      const { password: _password, ...userWithoutPassword } = user;
-      dispatch({ type: 'ADD_USER', user: userWithoutPassword });
+      dispatch({ type: 'ADD_USER', user });
       return user;
     };
 

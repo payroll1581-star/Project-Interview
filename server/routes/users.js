@@ -55,7 +55,7 @@ router.post('/', requireRole('admin'), (req, res) => {
   };
   insertUser.run(user);
 
-  res.status(201).json({ ...serializeUser(getUser.get(user.id)), password });
+  res.status(201).json(serializeUser(getUser.get(user.id)));
 });
 
 router.patch('/me/password', (req, res) => {
