@@ -12,15 +12,20 @@ An Interview Management System: candidate tracking, interview scheduling, and a 
 - `npm run server` — start the Express API server (`server/index.js`, default port 3001)
 - `npm run dev:all` — run both of the above together via `concurrently`
 - `npm run db:seed` — seed `server/data/app.db` from the fixture data baked into `server/seed.js` (idempotent — no-ops if the `users` table isn't empty; delete the `.db` file to reseed from scratch)
-- `npm run build` — type-check (`tsc -b`) then production build (`vite build`) for the frontend; run this to verify frontend changes compile, since there is no test suite
+- `npm run build` — type-check (`tsc -b`) then production build (`vite build`) for the frontend; run this to verify frontend changes compile
 - `npm run lint` — run oxlint (config in `.oxlintrc.json`, plugins: react, typescript, oxc) — frontend only, does not lint `server/`
+- `npm test` — run the backend test suite once (Vitest, config in `vitest.config.ts`); `npm run test:watch` for watch mode
 - `npm run preview` — preview the production frontend build
 
-The frontend talks to the API at `/api/*`, proxied to `http://localhost:3001` in dev by `vite.config.ts`'s `server.proxy`. Both `npm run dev` and `npm run server` (or `npm run dev:all`) must be running for the app to work. There are no automated tests in this repo.
+The frontend talks to the API at `/api/*`, proxied to `http://localhost:3001` in dev by `vite.config.ts`'s `server.proxy`. Both `npm run dev` and `npm run server` (or `npm run dev:all`) must be running for the app to work.
+
+## Testing
+
+Backend tests live alongside the code they cover as `*.test.js` (e.g. `server/routes/candidates.test.js`), run via Vitest against the real Express `app` (exported from `server/index.js`, which only calls `app.listen()` when `NODE_ENV !== 'test'`) using `supertest`. Tests run against an isolated `:memory:` SQLite database — `server/db.js` reads its path from `DB_PATH`, which `vitest.config.ts` sets to `:memory:`; the real `server/data/app.db` is never touched by the suite. Each test file gets a fresh in-memory DB (Vitest isolates modules per file by default), so seed a test's own users via `server/test/helpers.js`'s `createUser`/`clearData` rather than relying on `server/seed.js`'s fixture data. There is no frontend test suite yet — `npm run build`'s type-check is what currently guards frontend changes.
 
 ## Backend (`server/`)
 
-Plain ESM JavaScript, no build step, no TypeScript, no ORM — see `server/db.js` (opens the SQLite connection and applies `server/schema.sql` on startup), `server/routes/*.js` (one router per resource: `auth`, `candidates`, `interviews`, `users`), and `server/middleware/auth.js` (`requireAuth`/`requireRole` guard using opaque session tokens stored in the `sessions` table, not JWTs). Because `better-sqlite3` and `bcryptjs`'s sync API are used throughout, route handlers are synchronous — no `async`/`await` needed in `server/`.
+Plain ESM JavaScript, no build step, no TypeScript, no ORM — see `server/db.js` (opens the SQLite connection and applies `server/schema.sql` on startup), `server/routes/*.js` (one router per resource: `auth`, `candidates`, `interviews`, `users`), and `server/middleware/auth.js` (`requireAuth`/`requireRole` guard using opaque session tokens stored in the `sessions` table, not JWTs). Because `better-sqlite3` and `bcryptjs`'s sync API are used throughout, most route handlers are synchronous — no `async`/`await` needed. The exceptions are handlers that send email via `server/lib/mailer.js` (nodemailer), which is inherently async — see `POST /api/interviews/:id/notify` in `server/routes/interviews.js`.
 
 `Interview.evaluation` (one optional evaluation per interview) is flattened onto nullable `eval_*` columns on the `interviews` table rather than a separate table; `server/lib/serialize.js` reconstructs the nested shape the frontend's `Interview` type expects. `Interview.interviewerIds` is backed by the `interview_interviewers` join table.
 

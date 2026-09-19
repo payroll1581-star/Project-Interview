@@ -10,6 +10,8 @@
     "db:seed": "node server/seed.js",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -37,7 +39,9 @@
     "@vitejs/plugin-react": "^6.1.0",
     "concurrently": "^10.0.5",
     "oxlint": "^1.79.0",
+    "supertest": "^7.2.2",
     "typescript": "~6.0.2",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "^5.0.1"
   }
 }

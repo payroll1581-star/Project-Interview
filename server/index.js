@@ -10,7 +10,7 @@ import usersRoutes from './routes/users.js';
 import evaluationTemplateRoutes from './routes/evaluation-template.js';
 import activityLogRoutes from './routes/activity-log.js';
 
-const app = express();
+export const app = express();
 app.use(helmet());
 
 // Same-origin only by default (the Vite dev proxy makes browser requests same-origin,
@@ -41,7 +41,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error.' });
 });
 
-const PORT = process.env.PORT ?? 3001;
-app.listen(PORT, () => {
-  console.log(`API server listening on http://localhost:${PORT}`);
-});
+// Tests import `app` directly (via supertest) without wanting a real port bound.
+if (process.env.NODE_ENV !== 'test') {
+  const PORT = process.env.PORT ?? 3001;
+  app.listen(PORT, () => {
+    console.log(`API server listening on http://localhost:${PORT}`);
+  });
+}

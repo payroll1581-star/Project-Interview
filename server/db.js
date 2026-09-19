@@ -5,7 +5,8 @@ import { readFileSync } from 'node:fs';
 import { generateId } from './lib/ids.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const dbPath = join(__dirname, 'data', 'app.db');
+// DB_PATH lets tests point at an isolated ':memory:' database instead of the real dev DB.
+const dbPath = process.env.DB_PATH ?? join(__dirname, 'data', 'app.db');
 
 export const db = new Database(dbPath);
 db.pragma('foreign_keys = ON');
