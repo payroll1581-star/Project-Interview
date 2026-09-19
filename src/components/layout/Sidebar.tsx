@@ -7,6 +7,7 @@ import {
   UserRound,
   ClipboardList,
   ListChecks,
+  History,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../../context/useAuth';
@@ -17,6 +18,7 @@ const adminNavItems = [
   { to: '/scheduling', label: 'Scheduling', icon: CalendarClock },
   { to: '/interviewers', label: 'Interviewers', icon: UserRound },
   { to: '/evaluation-criteria', label: 'Evaluation Criteria', icon: ListChecks },
+  { to: '/activity-log', label: 'Activity Log', icon: History },
 ];
 
 const interviewerNavItems = [{ to: '/my-interviews', label: 'My Interviews', icon: ClipboardList }];

@@ -9,6 +9,7 @@ import { CandidateDetailPage } from './pages/CandidateDetailPage';
 import { SchedulingPage } from './pages/SchedulingPage';
 import { InterviewersPage } from './pages/InterviewersPage';
 import { EvaluationCriteriaPage } from './pages/EvaluationCriteriaPage';
+import { ActivityLogPage } from './pages/ActivityLogPage';
 import { MyInterviewsPage } from './pages/MyInterviewsPage';
 import { AppraisalReportPage } from './pages/AppraisalReportPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -80,6 +81,14 @@ export function AppRoutes() {
             element={
               <RequireAuth roles={['admin']}>
                 <EvaluationCriteriaPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="activity-log"
+            element={
+              <RequireAuth roles={['admin']}>
+                <ActivityLogPage />
               </RequireAuth>
             }
           />

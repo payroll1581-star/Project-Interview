@@ -4,6 +4,7 @@ import { db } from '../db.js';
 import { generateId } from '../lib/ids.js';
 import { serializeUser } from '../lib/serialize.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { logActivity } from '../lib/activityLog.js';
 
 const router = Router();
 
@@ -54,6 +55,14 @@ router.post('/', requireRole('admin'), (req, res) => {
     position: position || null,
   };
   insertUser.run(user);
+  logActivity({
+    actor: req.user,
+    action: 'user.created',
+    entityType: 'user',
+    entityId: user.id,
+    entityLabel: user.name,
+    details: `role: interviewer${user.position ? `, position: ${user.position}` : ''}`,
+  });
 
   res.status(201).json(serializeUser(getUser.get(user.id)));
 });
@@ -73,6 +82,13 @@ router.patch('/me/password', (req, res) => {
   }
 
   updateUserPassword.run(bcrypt.hashSync(newPassword, 10), req.user.id);
+  logActivity({
+    actor: req.user,
+    action: 'user.password_changed',
+    entityType: 'user',
+    entityId: req.user.id,
+    entityLabel: req.user.name,
+  });
   res.status(204).end();
 });
 
@@ -90,6 +106,14 @@ router.delete('/:id', requireRole('admin'), (req, res) => {
     });
   }
   deleteUser.run(req.params.id);
+  logActivity({
+    actor: req.user,
+    action: 'user.deleted',
+    entityType: 'user',
+    entityId: existing.id,
+    entityLabel: existing.name,
+    details: `role: ${existing.role}`,
+  });
   res.status(204).end();
 });
 

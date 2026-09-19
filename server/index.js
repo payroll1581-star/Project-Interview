@@ -8,6 +8,7 @@ import candidatesRoutes from './routes/candidates.js';
 import interviewsRoutes from './routes/interviews.js';
 import usersRoutes from './routes/users.js';
 import evaluationTemplateRoutes from './routes/evaluation-template.js';
+import activityLogRoutes from './routes/activity-log.js';
 
 const app = express();
 app.use(helmet());
@@ -28,6 +29,7 @@ app.use('/api/candidates', candidatesRoutes);
 app.use('/api/interviews', interviewsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/evaluation-template', evaluationTemplateRoutes);
+app.use('/api/activity-log', activityLogRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found.' });

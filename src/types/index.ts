@@ -9,3 +9,4 @@ export type {
 } from './interview';
 export type { UserRole, AppUser } from './user';
 export type { EvaluationSection, EvaluationCriterionDef } from './evaluationTemplate';
+export type { ActivityLogEntry } from './activityLog';

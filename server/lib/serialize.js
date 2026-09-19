@@ -22,6 +22,19 @@ export function serializeUser(row) {
   };
 }
 
+export function serializeActivityLogEntry(row) {
+  return {
+    id: row.id,
+    actorName: row.actor_name,
+    action: row.action,
+    entityType: row.entity_type,
+    entityId: row.entity_id ?? undefined,
+    entityLabel: row.entity_label ?? undefined,
+    details: row.details ?? undefined,
+    createdAt: row.created_at,
+  };
+}
+
 export function serializeEvaluationSection(row, criteria) {
   return {
     id: row.id,

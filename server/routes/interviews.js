@@ -5,6 +5,7 @@ import { serializeInterview, serializeCandidate } from '../lib/serialize.js';
 import { computeEvaluationResult } from '../lib/evaluation.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { sendMail } from '../lib/mailer.js';
+import { logActivity } from '../lib/activityLog.js';
 
 const router = Router();
 
@@ -126,6 +127,15 @@ router.post('/', requireRole('admin'), (req, res) => {
   });
   schedule();
 
+  logActivity({
+    actor: req.user,
+    action: 'interview.scheduled',
+    entityType: 'interview',
+    entityId: interview.id,
+    entityLabel: candidate.name,
+    details: `${type} interview on ${formatInterviewDateTime(date)}`,
+  });
+
   res.status(201).json({
     interview: loadInterview(interview.id),
     candidate: serializeCandidate(getCandidate.get(candidateId)),
@@ -141,6 +151,16 @@ router.post('/:id/cancel', requireRole('admin'), (req, res) => {
     return res.status(409).json({ error: `Cannot cancel an interview with status '${existing.status}'.` });
   }
   db.prepare("UPDATE interviews SET status = 'Cancelled' WHERE id = ?").run(req.params.id);
+
+  const candidate = getCandidate.get(existing.candidate_id);
+  logActivity({
+    actor: req.user,
+    action: 'interview.cancelled',
+    entityType: 'interview',
+    entityId: existing.id,
+    entityLabel: candidate?.name,
+  });
+
   res.json(loadInterview(req.params.id));
 });
 
@@ -250,6 +270,16 @@ router.post('/:id/complete', (req, res) => {
   });
   complete();
 
+  const completedCandidate = getCandidate.get(existing.candidate_id);
+  logActivity({
+    actor: req.user,
+    action: 'interview.completed',
+    entityType: 'interview',
+    entityId: existing.id,
+    entityLabel: completedCandidate?.name,
+    details: `Result: ${result} (${totalScore}/${maxScore})`,
+  });
+
   res.json(loadInterview(req.params.id));
 });
 
@@ -272,6 +302,19 @@ router.patch('/:id', requireRole('admin'), (req, res) => {
     `UPDATE interviews SET date = @date, duration_minutes = @duration_minutes, type = @type,
        location = @location, notes = @notes WHERE id = @id`,
   ).run(merged);
+
+  const rescheduledCandidate = getCandidate.get(existing.candidate_id);
+  logActivity({
+    actor: req.user,
+    action: merged.date !== existing.date ? 'interview.rescheduled' : 'interview.updated',
+    entityType: 'interview',
+    entityId: existing.id,
+    entityLabel: rescheduledCandidate?.name,
+    details:
+      merged.date !== existing.date
+        ? `${formatInterviewDateTime(existing.date)} → ${formatInterviewDateTime(merged.date)}`
+        : undefined,
+  });
 
   res.json(loadInterview(req.params.id));
 });

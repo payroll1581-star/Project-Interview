@@ -24,6 +24,7 @@ type Action =
   | { type: 'RESET' }
   | { type: 'ADD_CANDIDATE'; candidate: Candidate }
   | { type: 'UPDATE_CANDIDATE'; id: string; patch: Partial<Candidate> }
+  | { type: 'REMOVE_CANDIDATE'; id: string }
   | { type: 'ADD_INTERVIEW'; interview: Interview }
   | { type: 'UPDATE_INTERVIEW'; id: string; patch: Partial<Interview> }
   | { type: 'ADD_USER'; user: AppUser }
@@ -47,6 +48,12 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         candidates: state.candidates.map((c) => (c.id === action.id ? { ...c, ...action.patch } : c)),
+      };
+    case 'REMOVE_CANDIDATE':
+      return {
+        ...state,
+        candidates: state.candidates.filter((c) => c.id !== action.id),
+        interviews: state.interviews.filter((i) => i.candidateId !== action.id),
       };
     case 'ADD_INTERVIEW':
       return { ...state, interviews: [action.interview, ...state.interviews] };
@@ -135,6 +142,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const updateCandidateStatus: AppDataContextValue['updateCandidateStatus'] = async (id, status) => {
       const candidate = await api.patch<Candidate>(`/candidates/${id}`, { status });
       dispatch({ type: 'UPDATE_CANDIDATE', id, patch: candidate });
+    };
+
+    const deleteCandidate: AppDataContextValue['deleteCandidate'] = async (id) => {
+      await api.delete(`/candidates/${id}`);
+      dispatch({ type: 'REMOVE_CANDIDATE', id });
     };
 
     const scheduleInterview: AppDataContextValue['scheduleInterview'] = async (input) => {
@@ -259,6 +271,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addCandidate,
       updateCandidate,
       updateCandidateStatus,
+      deleteCandidate,
       getCandidateById,
       scheduleInterview,
       updateInterview,

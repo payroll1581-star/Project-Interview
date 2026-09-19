@@ -72,3 +72,18 @@ CREATE TABLE IF NOT EXISTS sessions (
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   expires_at TEXT NOT NULL
 );
+
+-- actor_name/entity_label are denormalized snapshots so history stays readable
+-- after the acting user or the affected record is later deleted.
+CREATE TABLE IF NOT EXISTS activity_log (
+  id TEXT PRIMARY KEY,
+  actor_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  actor_name TEXT NOT NULL,
+  action TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT,
+  entity_label TEXT,
+  details TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_activity_log_created ON activity_log(created_at DESC);

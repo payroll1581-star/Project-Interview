@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { ArrowLeft, CalendarPlus, Pencil } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, Pencil, Trash2 } from 'lucide-react';
 import { useAppData } from '../context/useAppData';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -14,9 +14,10 @@ import { formatDate } from '../lib/date';
 export function CandidateDetailPage() {
   const { candidateId } = useParams<{ candidateId: string }>();
   const navigate = useNavigate();
-  const { getCandidateById, getInterviewsForCandidate } = useAppData();
+  const { getCandidateById, getInterviewsForCandidate, deleteCandidate } = useAppData();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const candidate = candidateId ? getCandidateById(candidateId) : undefined;
 
@@ -40,6 +41,25 @@ export function CandidateDetailPage() {
     ? (scoreRatios.reduce((sum, r) => sum + r, 0) / scoreRatios.length) * 100
     : null;
 
+  const { id: confirmedCandidateId, name: candidateName } = candidate;
+
+  async function handleDelete() {
+    const warning =
+      interviews.length > 0
+        ? `Delete ${candidateName}? This will also remove ${interviews.length} associated interview(s). This cannot be undone.`
+        : `Delete ${candidateName}? This cannot be undone.`;
+    if (!window.confirm(warning)) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteCandidate(confirmedCandidateId);
+      navigate('/candidates');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Something went wrong.');
+      setIsDeleting(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <button
@@ -61,6 +81,10 @@ export function CandidateDetailPage() {
             <Button size="sm" onClick={() => setIsScheduleOpen(true)}>
               <CalendarPlus size={14} />
               Schedule Interview
+            </Button>
+            <Button size="sm" variant="danger" disabled={isDeleting} onClick={handleDelete}>
+              <Trash2 size={14} />
+              Delete
             </Button>
           </div>
         </CardHeader>
