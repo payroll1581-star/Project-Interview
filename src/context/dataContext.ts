@@ -38,6 +38,8 @@ export interface AppDataContextValue {
   updateCandidate: (id: string, patch: Partial<Candidate>) => Promise<void>;
   updateCandidateStatus: (id: string, status: CandidateStatus) => Promise<void>;
   deleteCandidate: (id: string) => Promise<void>;
+  uploadResume: (candidateId: string, file: File) => Promise<void>;
+  removeResume: (candidateId: string) => Promise<void>;
   getCandidateById: (id: string) => Candidate | undefined;
   scheduleInterview: (input: Omit<Interview, 'id' | 'status'>) => Promise<Interview>;
   updateInterview: (id: string, patch: Partial<Interview>) => Promise<void>;

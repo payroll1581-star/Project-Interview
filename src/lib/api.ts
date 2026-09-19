@@ -37,9 +37,39 @@ async function request<T>(method: string, path: string, options?: RequestOptions
   return res.json() as Promise<T>;
 }
 
+async function upload<T>(path: string, formData: FormData): Promise<T> {
+  const token = getToken();
+  const res = await fetch(`/api${path}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null);
+    throw new Error(payload?.error ?? `Request failed with status ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+// For downloading a file from an authenticated endpoint -- a plain <a href> can't attach
+// the bearer token, so callers fetch it as a blob and open/save that instead.
+async function downloadBlob(path: string): Promise<Blob> {
+  const token = getToken();
+  const res = await fetch(`/api${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null);
+    throw new Error(payload?.error ?? `Request failed with status ${res.status}`);
+  }
+  return res.blob();
+}
+
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, { body }),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, { body }),
   delete: <T>(path: string) => request<T>('DELETE', path),
+  upload,
+  downloadBlob,
 };

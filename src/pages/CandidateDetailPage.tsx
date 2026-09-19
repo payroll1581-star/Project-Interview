@@ -4,7 +4,7 @@ import { ArrowLeft, CalendarPlus, Pencil, Trash2 } from 'lucide-react';
 import { useAppData } from '../context/useAppData';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { ResumeLink } from '../components/ui/ResumeLink';
+import { ResumeUpload } from '../components/candidates/ResumeUpload';
 import { CandidateStatusSelect } from '../components/candidates/CandidateStatusSelect';
 import { CandidateFormModal } from '../components/candidates/CandidateFormModal';
 import { ScheduleInterviewForm } from '../components/interviews/ScheduleInterviewForm';
@@ -106,7 +106,7 @@ export function CandidateDetailPage() {
               <p className="text-xs text-slate-400">Applied on</p>
               <p className="text-slate-800">{formatDate(candidate.createdAt)}</p>
             </div>
-            <ResumeLink url={candidate.resumeUrl} />
+            <ResumeUpload candidateId={candidate.id} resumeUrl={candidate.resumeUrl} />
             {candidate.notes && (
               <div>
                 <p className="text-xs text-slate-400">Notes</p>

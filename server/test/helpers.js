@@ -26,3 +26,16 @@ export function clearData() {
     DELETE FROM users;
   `);
 }
+
+// Leaves users/sessions alone -- for tests that log in once in beforeAll and would
+// otherwise trip the login rate limiter (a real limiter, shared module state for the
+// whole file) by re-logging-in on every test via a full clearData() in beforeEach.
+export function clearCandidatesAndInterviews() {
+  db.exec(`
+    DELETE FROM evaluation_scores;
+    DELETE FROM interview_interviewers;
+    DELETE FROM interviews;
+    DELETE FROM candidates;
+    DELETE FROM activity_log;
+  `);
+}

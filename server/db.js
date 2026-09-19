@@ -27,6 +27,10 @@ function ensureColumn(table, column, definition) {
 ensureColumn('users', 'position', 'TEXT');
 ensureColumn('interviews', 'eval_interviewer_signature', 'TEXT');
 ensureColumn('interviews', 'eval_interviewer_position', 'TEXT');
+// Server-internal only (never serialized to the frontend) -- the on-disk filename of an
+// uploaded resume, looked up by GET /api/candidates/:id/resume. `resume_url` stays the
+// public-facing value (either an external link or the stable internal download path).
+ensureColumn('candidates', 'resume_filename', 'TEXT');
 
 // Default, admin-editable evaluation template — seeded once if empty. Purely placeholder
 // content: 3 sections, 20 criteria total (20 * 5 = 100 points), meant to be renamed/replaced

@@ -23,10 +23,10 @@ type Action =
     }
   | { type: 'RESET' }
   | { type: 'ADD_CANDIDATE'; candidate: Candidate }
-  | { type: 'UPDATE_CANDIDATE'; id: string; patch: Partial<Candidate> }
+  | { type: 'UPDATE_CANDIDATE'; id: string; candidate: Candidate }
   | { type: 'REMOVE_CANDIDATE'; id: string }
   | { type: 'ADD_INTERVIEW'; interview: Interview }
-  | { type: 'UPDATE_INTERVIEW'; id: string; patch: Partial<Interview> }
+  | { type: 'UPDATE_INTERVIEW'; id: string; interview: Interview }
   | { type: 'ADD_USER'; user: AppUser }
   | { type: 'REMOVE_USER'; id: string }
   | { type: 'SET_EVALUATION_TEMPLATE'; evaluationTemplate: EvaluationSection[] };
@@ -47,7 +47,7 @@ function reducer(state: State, action: Action): State {
     case 'UPDATE_CANDIDATE':
       return {
         ...state,
-        candidates: state.candidates.map((c) => (c.id === action.id ? { ...c, ...action.patch } : c)),
+        candidates: state.candidates.map((c) => (c.id === action.id ? action.candidate : c)),
       };
     case 'REMOVE_CANDIDATE':
       return {
@@ -60,7 +60,7 @@ function reducer(state: State, action: Action): State {
     case 'UPDATE_INTERVIEW':
       return {
         ...state,
-        interviews: state.interviews.map((i) => (i.id === action.id ? { ...i, ...action.patch } : i)),
+        interviews: state.interviews.map((i) => (i.id === action.id ? action.interview : i)),
       };
     case 'ADD_USER':
       return { ...state, users: [...state.users, action.user] };
@@ -136,12 +136,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
     const updateCandidate: AppDataContextValue['updateCandidate'] = async (id, patch) => {
       const candidate = await api.patch<Candidate>(`/candidates/${id}`, patch);
-      dispatch({ type: 'UPDATE_CANDIDATE', id, patch: candidate });
+      dispatch({ type: 'UPDATE_CANDIDATE', id, candidate });
     };
 
     const updateCandidateStatus: AppDataContextValue['updateCandidateStatus'] = async (id, status) => {
       const candidate = await api.patch<Candidate>(`/candidates/${id}`, { status });
-      dispatch({ type: 'UPDATE_CANDIDATE', id, patch: candidate });
+      dispatch({ type: 'UPDATE_CANDIDATE', id, candidate });
     };
 
     const deleteCandidate: AppDataContextValue['deleteCandidate'] = async (id) => {
@@ -149,21 +149,33 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'REMOVE_CANDIDATE', id });
     };
 
+    const uploadResume: AppDataContextValue['uploadResume'] = async (candidateId, file) => {
+      const formData = new FormData();
+      formData.append('resume', file);
+      const candidate = await api.upload<Candidate>(`/candidates/${candidateId}/resume`, formData);
+      dispatch({ type: 'UPDATE_CANDIDATE', id: candidateId, candidate });
+    };
+
+    const removeResume: AppDataContextValue['removeResume'] = async (candidateId) => {
+      const candidate = await api.delete<Candidate>(`/candidates/${candidateId}/resume`);
+      dispatch({ type: 'UPDATE_CANDIDATE', id: candidateId, candidate });
+    };
+
     const scheduleInterview: AppDataContextValue['scheduleInterview'] = async (input) => {
       const result = await api.post<{ interview: Interview; candidate: Candidate }>('/interviews', input);
       dispatch({ type: 'ADD_INTERVIEW', interview: result.interview });
-      dispatch({ type: 'UPDATE_CANDIDATE', id: result.candidate.id, patch: result.candidate });
+      dispatch({ type: 'UPDATE_CANDIDATE', id: result.candidate.id, candidate: result.candidate });
       return result.interview;
     };
 
     const updateInterview: AppDataContextValue['updateInterview'] = async (id, patch) => {
       const interview = await api.patch<Interview>(`/interviews/${id}`, patch);
-      dispatch({ type: 'UPDATE_INTERVIEW', id, patch: interview });
+      dispatch({ type: 'UPDATE_INTERVIEW', id, interview });
     };
 
     const cancelInterview: AppDataContextValue['cancelInterview'] = async (id) => {
       const interview = await api.post<Interview>(`/interviews/${id}/cancel`);
-      dispatch({ type: 'UPDATE_INTERVIEW', id, patch: interview });
+      dispatch({ type: 'UPDATE_INTERVIEW', id, interview });
     };
 
     const notifyInterview: AppDataContextValue['notifyInterview'] = (id, message) =>
@@ -171,7 +183,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
     const completeInterview: AppDataContextValue['completeInterview'] = async (id, evaluation) => {
       const interview = await api.post<Interview>(`/interviews/${id}/complete`, { evaluation });
-      dispatch({ type: 'UPDATE_INTERVIEW', id, patch: interview });
+      dispatch({ type: 'UPDATE_INTERVIEW', id, interview });
     };
 
     const getInterviewsForCandidate = (candidateId: string) =>
@@ -272,6 +284,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       updateCandidate,
       updateCandidateStatus,
       deleteCandidate,
+      uploadResume,
+      removeResume,
       getCandidateById,
       scheduleInterview,
       updateInterview,
