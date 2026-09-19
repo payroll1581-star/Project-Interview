@@ -51,6 +51,7 @@ export interface AppDataContextValue {
   getUserById: (id: string) => AppUser | undefined;
   addInterviewer: (input: { name: string; email: string; password: string; position?: string }) => Promise<AppUser>;
   removeInterviewer: (id: string) => Promise<void>;
+  revokeUserSessions: (id: string) => Promise<void>;
   addEvaluationSection: (name: string) => Promise<void>;
   renameEvaluationSection: (id: string, name: string) => Promise<void>;
   removeEvaluationSection: (id: string) => Promise<void>;

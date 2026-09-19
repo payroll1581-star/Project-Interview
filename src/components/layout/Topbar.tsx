@@ -23,12 +23,25 @@ function resolveTitle(pathname: string): string {
 export function Topbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, logoutEverywhere } = useAuth();
   const [changingPassword, setChangingPassword] = useState(false);
+  const [isLoggingOutEverywhere, setIsLoggingOutEverywhere] = useState(false);
 
   function handleLogout() {
     logout();
     navigate('/login', { replace: true });
+  }
+
+  async function handleLogoutEverywhere() {
+    if (!window.confirm('Log out of all devices and browsers, including this one?')) return;
+    setIsLoggingOutEverywhere(true);
+    try {
+      await logoutEverywhere();
+      navigate('/login', { replace: true });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Something went wrong.');
+      setIsLoggingOutEverywhere(false);
+    }
   }
 
   return (
@@ -38,6 +51,9 @@ export function Topbar() {
         {currentUser && <span className="text-sm text-slate-500">{currentUser.name}</span>}
         <Button variant="ghost" size="sm" onClick={() => setChangingPassword(true)}>
           Change password
+        </Button>
+        <Button variant="ghost" size="sm" disabled={isLoggingOutEverywhere} onClick={handleLogoutEverywhere}>
+          Log out everywhere
         </Button>
         <Button variant="ghost" size="sm" onClick={handleLogout}>
           Log out

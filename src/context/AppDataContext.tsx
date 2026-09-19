@@ -125,6 +125,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'REMOVE_USER', id });
     };
 
+    const revokeUserSessions: AppDataContextValue['revokeUserSessions'] = async (id) => {
+      await api.delete(`/users/${id}/sessions`);
+    };
+
     const getInterviewsForInterviewer = (interviewerId: string) =>
       sortByDateAsc(state.interviews.filter((i) => i.interviewerIds.includes(interviewerId)));
 
@@ -297,6 +301,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       getUserById,
       addInterviewer,
       removeInterviewer,
+      revokeUserSessions,
       addEvaluationSection,
       renameEvaluationSection,
       removeEvaluationSection,

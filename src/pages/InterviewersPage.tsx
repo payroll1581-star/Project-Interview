@@ -8,9 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } fro
 import { EmptyState } from '../components/ui/EmptyState';
 
 export function InterviewersPage() {
-  const { interviewers, removeInterviewer } = useAppData();
+  const { interviewers, removeInterviewer, revokeUserSessions } = useAppData();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
 
   async function handleRemove(id: string) {
     setRemovingId(id);
@@ -20,6 +21,18 @@ export function InterviewersPage() {
       alert(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
       setRemovingId(null);
+    }
+  }
+
+  async function handleRevokeSessions(id: string, name: string) {
+    if (!window.confirm(`Log ${name} out of all their devices?`)) return;
+    setRevokingId(id);
+    try {
+      await revokeUserSessions(id);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Something went wrong.');
+    } finally {
+      setRevokingId(null);
     }
   }
 
@@ -54,14 +67,24 @@ export function InterviewersPage() {
                     <TableCell>{interviewer.position ?? '—'}</TableCell>
                     <TableCell>{interviewer.email}</TableCell>
                     <TableCell>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        disabled={removingId === interviewer.id}
-                        onClick={() => handleRemove(interviewer.id)}
-                      >
-                        Remove
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={revokingId === interviewer.id}
+                          onClick={() => handleRevokeSessions(interviewer.id, interviewer.name)}
+                        >
+                          Revoke sessions
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          disabled={removingId === interviewer.id}
+                          onClick={() => handleRemove(interviewer.id)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

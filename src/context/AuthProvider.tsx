@@ -47,6 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCurrentUser(null);
         clear();
       },
+      logoutEverywhere: async () => {
+        // Ends every session for this account, including the current one.
+        await api.delete('/auth/sessions');
+        setToken(null);
+        setCurrentUser(null);
+        clear();
+      },
       changePassword: async (currentPassword: string, newPassword: string) => {
         await api.patch('/users/me/password', { currentPassword, newPassword });
       },

@@ -5,6 +5,7 @@ import { db } from '../db.js';
 import { generateId } from '../lib/ids.js';
 import { serializeUser } from '../lib/serialize.js';
 import { requireAuth } from '../middleware/auth.js';
+import { logActivity } from '../lib/activityLog.js';
 
 const router = Router();
 
@@ -21,6 +22,7 @@ const loginLimiter = rateLimit({
 const getUserByEmail = db.prepare('SELECT * FROM users WHERE email = ?');
 const insertSession = db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)');
 const deleteSession = db.prepare('DELETE FROM sessions WHERE token = ?');
+const deleteSessionsForUser = db.prepare('DELETE FROM sessions WHERE user_id = ?');
 
 router.post('/login', loginLimiter, (req, res) => {
   const { email, password } = req.body ?? {};
@@ -49,6 +51,20 @@ router.post('/logout', requireAuth, (req, res) => {
 
 router.get('/me', requireAuth, (req, res) => {
   res.json({ user: req.user });
+});
+
+// Self-service "log out everywhere": ends every session for the calling user,
+// including the one making this request -- useful if a token/password may have leaked.
+router.delete('/sessions', requireAuth, (req, res) => {
+  deleteSessionsForUser.run(req.user.id);
+  logActivity({
+    actor: req.user,
+    action: 'user.sessions_revoked_self',
+    entityType: 'user',
+    entityId: req.user.id,
+    entityLabel: req.user.name,
+  });
+  res.status(204).end();
 });
 
 export default router;

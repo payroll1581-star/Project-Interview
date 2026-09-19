@@ -25,6 +25,7 @@ const insertUser = db.prepare(
 );
 const deleteUser = db.prepare('DELETE FROM users WHERE id = ?');
 const updateUserPassword = db.prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+const deleteSessionsForUser = db.prepare('DELETE FROM sessions WHERE user_id = ?');
 const countAdmins = db.prepare("SELECT COUNT(*) AS count FROM users WHERE role = 'admin'");
 const countAssignments = db.prepare(
   'SELECT COUNT(*) AS count FROM interview_interviewers WHERE user_id = ?',
@@ -139,6 +140,25 @@ router.delete('/:id', requireRole('admin'), (req, res) => {
     entityId: existing.id,
     entityLabel: existing.name,
     details: `role: ${existing.role}`,
+  });
+  res.status(204).end();
+});
+
+// Admin-forced "log out everywhere" for a specific user -- e.g. right after resetting
+// their password, or if their account is suspected compromised.
+router.delete('/:id/sessions', requireRole('admin'), (req, res) => {
+  const existing = getUser.get(req.params.id);
+  if (!existing) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+
+  deleteSessionsForUser.run(req.params.id);
+  logActivity({
+    actor: req.user,
+    action: 'user.sessions_revoked',
+    entityType: 'user',
+    entityId: existing.id,
+    entityLabel: existing.name,
   });
   res.status(204).end();
 });
