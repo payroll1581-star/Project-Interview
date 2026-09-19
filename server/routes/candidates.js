@@ -16,6 +16,7 @@ const listCandidatesForInterviewer = db.prepare(
    ORDER BY candidates.created_at DESC`,
 );
 const getCandidate = db.prepare('SELECT * FROM candidates WHERE id = ?');
+const getCandidateByEmail = db.prepare('SELECT * FROM candidates WHERE email = ?');
 const insertCandidate = db.prepare(
   `INSERT INTO candidates (id, name, email, phone, position, status, resume_url, notes, created_at)
    VALUES (@id, @name, @email, @phone, @position, @status, @resumeUrl, @notes, @createdAt)`,
@@ -37,6 +38,9 @@ router.post('/', requireRole('admin'), (req, res) => {
   const { name, email, phone, position, status, resumeUrl, notes } = req.body ?? {};
   if (!name || !email || !phone || !position || !status) {
     return res.status(400).json({ error: 'name, email, phone, position, and status are required.' });
+  }
+  if (getCandidateByEmail.get(email)) {
+    return res.status(409).json({ error: 'A candidate with that email already exists.' });
   }
 
   const candidate = {
@@ -79,6 +83,13 @@ router.patch('/:id', requireRole('admin'), (req, res) => {
     resume_url: 'resumeUrl' in patch ? (patch.resumeUrl ?? null) : existing.resume_url,
     notes: 'notes' in patch ? (patch.notes ?? null) : existing.notes,
   };
+
+  if (merged.email !== existing.email) {
+    const conflict = getCandidateByEmail.get(merged.email);
+    if (conflict && conflict.id !== existing.id) {
+      return res.status(409).json({ error: 'A candidate with that email already exists.' });
+    }
+  }
 
   db.prepare(
     `UPDATE candidates SET name = @name, email = @email, phone = @phone, position = @position,
