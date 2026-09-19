@@ -75,6 +75,21 @@ function buildNotificationEmail({ interviewer, candidate, interview, message }) 
   return lines.join('\n');
 }
 
+function buildCandidateConfirmationEmail({ candidate, interview }) {
+  const lines = [
+    `Hi ${candidate.name},`,
+    '',
+    `This confirms your ${interview.type.toLowerCase()} interview${candidate.position ? ` for ${candidate.position}` : ''}.`,
+    '',
+    `Date & time: ${formatInterviewDateTime(interview.date)}`,
+    interview.location ? `Location: ${interview.location}` : null,
+    '',
+    "We look forward to speaking with you. If you have any questions or need to reschedule, please reply to this email.",
+  ].filter((line) => line !== null);
+
+  return lines.join('\n');
+}
+
 router.use(requireAuth);
 
 router.get('/', (req, res) => {
@@ -150,6 +165,36 @@ router.post('/', requireRole('admin'), (req, res) => {
     details: `${type} interview on ${formatInterviewDateTime(date)}`,
   });
 
+  // Fire-and-forget: don't let a slow/failed mail send delay or fail the scheduling response.
+  if (candidate.email) {
+    sendMail({
+      to: candidate.email,
+      subject: `Your interview is scheduled — ${formatInterviewDateTime(date)}`,
+      text: buildCandidateConfirmationEmail({ candidate, interview }),
+    })
+      .then(({ sent }) => {
+        logActivity({
+          actor: req.user,
+          action: 'candidate.confirmation_sent',
+          entityType: 'candidate',
+          entityId: candidate.id,
+          entityLabel: candidate.name,
+          details: sent ? `Sent to ${candidate.email}` : `Logged (SMTP not configured), would send to ${candidate.email}`,
+        });
+      })
+      .catch((err) => {
+        console.error(`[mailer] Failed to send candidate confirmation to ${candidate.email}:`, err);
+        logActivity({
+          actor: req.user,
+          action: 'candidate.confirmation_failed',
+          entityType: 'candidate',
+          entityId: candidate.id,
+          entityLabel: candidate.name,
+          details: err?.message ?? 'Unknown error',
+        });
+      });
+  }
+
   res.status(201).json({
     interview: loadInterview(interview.id),
     candidate: serializeCandidate(getCandidate.get(candidateId)),
@@ -216,6 +261,16 @@ router.post('/:id/notify', requireRole('admin'), async (req, res) => {
       return { email, status: 'failed', error: outcome.reason?.message ?? 'Unknown error' };
     }
     return { email, status: outcome.value.sent ? 'sent' : 'logged' };
+  });
+
+  const sentCount = results.filter((r) => r.status === 'sent' || r.status === 'logged').length;
+  logActivity({
+    actor: req.user,
+    action: 'interview.notified',
+    entityType: 'interview',
+    entityId: existing.id,
+    entityLabel: candidate?.name,
+    details: `${sentCount}/${results.length} interviewer(s) notified: ${results.map((r) => `${r.email} (${r.status})`).join(', ')}`,
   });
 
   res.json({ results });
