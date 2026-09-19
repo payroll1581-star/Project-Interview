@@ -1,17 +1,15 @@
 import multer from 'multer';
 import { existsSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, extname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { extname, join } from 'node:path';
 import { generateId } from './ids.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 // Tests write real files to disk (unlike DB_PATH=':memory:', there's no in-memory
-// filesystem) -- keep them out of the real server/data/uploads/ directory.
+// filesystem) -- keep them out of whatever real resume folder is configured.
 export const RESUMES_DIR =
   process.env.NODE_ENV === 'test'
     ? join(tmpdir(), 'int-claude-test-uploads', 'resumes')
-    : join(__dirname, '..', 'data', 'uploads', 'resumes');
+    : (process.env.RESUME_UPLOAD_DIR ?? 'C:\\Users\\Asus\\OneDrive\\Desktop\\Rasume');
 if (!existsSync(RESUMES_DIR)) mkdirSync(RESUMES_DIR, { recursive: true });
 
 const ALLOWED_RESUME_TYPES = new Set([
