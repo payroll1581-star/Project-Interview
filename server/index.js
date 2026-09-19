@@ -27,6 +27,17 @@ app.use(cors({ origin: allowedOrigins.length > 0 ? allowedOrigins : false, crede
 
 app.use(express.json());
 
+// Unauthenticated on purpose -- load balancers, uptime monitors, and the Docker
+// HEALTHCHECK below need to probe this without credentials.
+app.get('/healthz', (req, res) => {
+  try {
+    db.prepare('SELECT 1').get();
+    res.json({ status: 'ok' });
+  } catch (err) {
+    res.status(503).json({ status: 'error', error: err.message });
+  }
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/candidates', candidatesRoutes);
 app.use('/api/interviews', interviewsRoutes);
