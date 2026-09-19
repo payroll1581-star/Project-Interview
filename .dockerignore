@@ -1,0 +1,13 @@
+node_modules
+dist
+dist-ssr
+server/data
+.env
+.env.local
+.env.example
+.git
+.github
+*.log
+.vscode
+.idea
+.claude
