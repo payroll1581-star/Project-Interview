@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Menu } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../../context/useAuth';
 import { Button } from '../ui/Button';
@@ -20,7 +21,11 @@ function resolveTitle(pathname: string): string {
   return 'Interview Manager';
 }
 
-export function Topbar() {
+interface TopbarProps {
+  onOpenMenu: () => void;
+}
+
+export function Topbar({ onOpenMenu }: TopbarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, logout, logoutEverywhere } = useAuth();
@@ -45,10 +50,20 @@ export function Topbar() {
   }
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-6">
-      <h1 className="text-base font-semibold text-slate-900">{resolveTitle(location.pathname)}</h1>
-      <div className="flex items-center gap-3">
-        {currentUser && <span className="text-sm text-slate-500">{currentUser.name}</span>}
+    <header className="flex min-h-14 flex-wrap items-center justify-between gap-y-2 border-b border-slate-200 bg-white px-4 py-2 sm:px-6">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onOpenMenu}
+          className="-ml-1 rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 md:hidden"
+          aria-label="Open navigation menu"
+        >
+          <Menu size={20} />
+        </button>
+        <h1 className="text-base font-semibold text-slate-900">{resolveTitle(location.pathname)}</h1>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        {currentUser && <span className="hidden text-sm text-slate-500 sm:inline">{currentUser.name}</span>}
         <Button variant="ghost" size="sm" onClick={() => setChangingPassword(true)}>
           Change password
         </Button>

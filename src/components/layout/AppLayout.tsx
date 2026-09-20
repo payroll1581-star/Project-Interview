@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
@@ -6,12 +7,13 @@ import { ErrorBoundary } from '../ErrorBoundary';
 
 export function AppLayout() {
   const location = useLocation();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
     <div className="flex h-screen bg-slate-50">
-      <Sidebar />
+      <Sidebar mobileOpen={mobileNavOpen} onCloseMobile={() => setMobileNavOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar />
+        <Topbar onOpenMenu={() => setMobileNavOpen(true)} />
         <DataErrorBanner />
         <main className="flex-1 overflow-y-auto p-6">
           <ErrorBoundary key={location.pathname}>
