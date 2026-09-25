@@ -23,6 +23,11 @@ const insertInterview = db.prepare(
 );
 const insertInterviewer = db.prepare('INSERT INTO interview_interviewers (interview_id, user_id) VALUES (?, ?)');
 const getCandidate = db.prepare('SELECT * FROM candidates WHERE id = ?');
+const countInterviewsByStatus = db.prepare(
+  `SELECT COALESCE(SUM(status = 'Scheduled'), 0) AS scheduled,
+          COALESCE(SUM(status = 'Completed'), 0) AS completed
+   FROM interviews WHERE candidate_id = ?`,
+);
 const getUserRow = db.prepare('SELECT * FROM users WHERE id = ?');
 const updateCandidateStatus = db.prepare('UPDATE candidates SET status = ? WHERE id = ?');
 const getCriterion = db.prepare(
@@ -41,6 +46,28 @@ function loadInterview(id) {
   if (!row) return undefined;
   const interviewerIds = getInterviewerIds.all(id).map((r) => r.userId);
   return serializeInterview(row, interviewerIds, getScoresForInterview.all(id));
+}
+
+// Advance an 'Interview Scheduled' candidate to 'Interviewed' once no interview is still pending
+// and at least one was completed. Never touches Applied/Screening/Offer/Rejected (an admin may
+// have moved them manually). Call inside the transaction that changed the interview's status.
+function advanceCandidateIfInterviewed(candidateId) {
+  if (getCandidate.get(candidateId)?.status !== 'Interview Scheduled') return false;
+  const { scheduled, completed } = countInterviewsByStatus.get(candidateId);
+  if (scheduled > 0 || completed === 0) return false;
+  updateCandidateStatus.run('Interviewed', candidateId);
+  return true;
+}
+
+function logInterviewedAdvance(actor, candidate) {
+  logActivity({
+    actor,
+    action: 'candidate.status_changed',
+    entityType: 'candidate',
+    entityId: candidate.id,
+    entityLabel: candidate.name,
+    details: 'Interview Scheduled → Interviewed',
+  });
 }
 
 // Interview dates are stored as UTC; format in the organisation's zone, not the server's.
@@ -209,7 +236,11 @@ router.post('/:id/cancel', requireRole('admin'), (req, res) => {
   if (existing.status !== 'Scheduled') {
     return res.status(409).json({ error: `Cannot cancel an interview with status '${existing.status}'.` });
   }
-  db.prepare("UPDATE interviews SET status = 'Cancelled' WHERE id = ?").run(req.params.id);
+  const cancel = db.transaction(() => {
+    db.prepare("UPDATE interviews SET status = 'Cancelled' WHERE id = ?").run(req.params.id);
+    return advanceCandidateIfInterviewed(existing.candidate_id);
+  });
+  const advancedCandidate = cancel();
 
   const candidate = getCandidate.get(existing.candidate_id);
   logActivity({
@@ -219,8 +250,14 @@ router.post('/:id/cancel', requireRole('admin'), (req, res) => {
     entityId: existing.id,
     entityLabel: candidate?.name,
   });
+  if (advancedCandidate) {
+    logInterviewedAdvance(req.user, candidate);
+  }
 
-  res.json(loadInterview(req.params.id));
+  res.json({
+    interview: loadInterview(req.params.id),
+    candidate: candidate ? serializeCandidate(candidate) : null,
+  });
 });
 
 router.post('/:id/notify', requireRole('admin'), async (req, res) => {
@@ -336,8 +373,10 @@ router.post('/:id/complete', (req, res) => {
       evalInterviewerPosition:
         evaluation?.interviewerPosition ?? existing.eval_interviewer_position ?? null,
     });
+
+    return advanceCandidateIfInterviewed(existing.candidate_id);
   });
-  complete();
+  const advancedCandidate = complete();
 
   const completedCandidate = getCandidate.get(existing.candidate_id);
   logActivity({
@@ -348,8 +387,14 @@ router.post('/:id/complete', (req, res) => {
     entityLabel: completedCandidate?.name,
     details: `Result: ${result} (${totalScore}/${maxScore})`,
   });
+  if (advancedCandidate) {
+    logInterviewedAdvance(req.user, completedCandidate);
+  }
 
-  res.json(loadInterview(req.params.id));
+  res.json({
+    interview: loadInterview(req.params.id),
+    candidate: completedCandidate ? serializeCandidate(completedCandidate) : null,
+  });
 });
 
 router.patch('/:id', requireRole('admin'), (req, res) => {

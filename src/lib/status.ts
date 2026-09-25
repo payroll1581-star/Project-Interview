@@ -6,6 +6,7 @@ export const candidateStatusStyles: Record<CandidateStatus, BadgeColor> = {
   Applied: 'slate',
   Screening: 'blue',
   'Interview Scheduled': 'violet',
+  Interviewed: 'amber',
   Offer: 'emerald',
   Rejected: 'red',
 };
@@ -20,8 +21,17 @@ export const candidateStatusOptions: CandidateStatus[] = [
   'Applied',
   'Screening',
   'Interview Scheduled',
+  'Interviewed',
   'Offer',
   'Rejected',
+];
+
+export const candidatePipelineSteps: CandidateStatus[] = [
+  'Applied',
+  'Screening',
+  'Interview Scheduled',
+  'Interviewed',
+  'Offer',
 ];
 
 export const interviewTypeOptions = ['Phone', 'Technical', 'Onsite', 'Final'] as const;

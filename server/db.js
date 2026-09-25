@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { generateId } from './lib/ids.js';
+import { migrateCandidateInterviewedStatus } from './lib/migrations.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // DB_PATH lets tests point at an isolated ':memory:' database instead of the real dev DB.
@@ -31,6 +32,8 @@ ensureColumn('interviews', 'eval_interviewer_position', 'TEXT');
 // uploaded resume, looked up by GET /api/candidates/:id/resume. `resume_url` stays the
 // public-facing value (either an external link or the stable internal download path).
 ensureColumn('candidates', 'resume_filename', 'TEXT');
+
+migrateCandidateInterviewedStatus(db);
 
 // Default, admin-editable evaluation template — seeded once if empty. Purely placeholder
 // content: 3 sections, 20 criteria total (20 * 5 = 100 points), meant to be renamed/replaced

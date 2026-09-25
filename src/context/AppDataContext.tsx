@@ -77,6 +77,7 @@ const STATUS_LIST: CandidateStatus[] = [
   'Applied',
   'Screening',
   'Interview Scheduled',
+  'Interviewed',
   'Offer',
   'Rejected',
 ];
@@ -178,16 +179,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     };
 
     const cancelInterview: AppDataContextValue['cancelInterview'] = async (id) => {
-      const interview = await api.post<Interview>(`/interviews/${id}/cancel`);
-      dispatch({ type: 'UPDATE_INTERVIEW', id, interview });
+      const result = await api.post<{ interview: Interview; candidate: Candidate | null }>(
+        `/interviews/${id}/cancel`,
+      );
+      dispatch({ type: 'UPDATE_INTERVIEW', id, interview: result.interview });
+      if (result.candidate) {
+        dispatch({ type: 'UPDATE_CANDIDATE', id: result.candidate.id, candidate: result.candidate });
+      }
     };
 
     const notifyInterview: AppDataContextValue['notifyInterview'] = (id, message) =>
       api.post(`/interviews/${id}/notify`, { message });
 
     const completeInterview: AppDataContextValue['completeInterview'] = async (id, evaluation) => {
-      const interview = await api.post<Interview>(`/interviews/${id}/complete`, { evaluation });
-      dispatch({ type: 'UPDATE_INTERVIEW', id, interview });
+      const result = await api.post<{ interview: Interview; candidate: Candidate | null }>(
+        `/interviews/${id}/complete`,
+        { evaluation },
+      );
+      dispatch({ type: 'UPDATE_INTERVIEW', id, interview: result.interview });
+      if (result.candidate) {
+        dispatch({ type: 'UPDATE_CANDIDATE', id: result.candidate.id, candidate: result.candidate });
+      }
     };
 
     const getInterviewsForCandidate = (candidateId: string) =>

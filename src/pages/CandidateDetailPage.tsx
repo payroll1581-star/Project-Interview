@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button';
 import { ResumeUpload } from '../components/candidates/ResumeUpload';
 import { CandidateStatusSelect } from '../components/candidates/CandidateStatusSelect';
+import { CandidatePipelineStepper } from '../components/candidates/CandidatePipelineStepper';
 import { CandidateFormModal } from '../components/candidates/CandidateFormModal';
 import { ScheduleInterviewForm } from '../components/interviews/ScheduleInterviewForm';
 import { InterviewList } from '../components/interviews/InterviewList';
@@ -89,6 +90,9 @@ export function CandidateDetailPage() {
           </div>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <CandidatePipelineStepper status={candidate.status} />
+          </div>
           <div className="flex flex-col gap-3 text-sm">
             <div>
               <p className="text-xs text-slate-400">Position</p>

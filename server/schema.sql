@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS candidates (
   email TEXT NOT NULL,
   phone TEXT NOT NULL,
   position TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('Applied', 'Screening', 'Interview Scheduled', 'Offer', 'Rejected')),
+  status TEXT NOT NULL CHECK (status IN ('Applied', 'Screening', 'Interview Scheduled', 'Interviewed', 'Offer', 'Rejected')),
   resume_url TEXT,
   notes TEXT,
   created_at TEXT NOT NULL
