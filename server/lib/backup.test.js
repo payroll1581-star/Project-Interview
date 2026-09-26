@@ -97,6 +97,33 @@ describe('runBackup', () => {
     expect(readdirSync(join(backupDir, 'resumes'))).toEqual(['a.pdf']);
   });
 
+  it('refuses to empty the mirror when the resumes folder suddenly has no files', async () => {
+    writeFileSync(join(resumesDir, 'a.pdf'), 'A');
+    await runBackup({ db, resumesDir, backupDir, now: new Date('2026-09-26T02:00:00.000Z') });
+    rmSync(join(resumesDir, 'a.pdf'));
+
+    await expect(
+      runBackup({ db, resumesDir, backupDir, now: new Date('2026-09-27T02:00:00.000Z') }),
+    ).rejects.toThrow(/empty/i);
+    expect(readdirSync(join(backupDir, 'resumes'))).toEqual(['a.pdf']);
+  });
+
+  it('still writes the database copy when the resume mirror fails', async () => {
+    writeFileSync(join(resumesDir, 'a.pdf'), 'A');
+    await runBackup({ db, resumesDir, backupDir, now: new Date('2026-09-26T02:00:00.000Z') });
+    rmSync(join(resumesDir, 'a.pdf'));
+
+    await expect(
+      runBackup({ db, resumesDir, backupDir, now: new Date('2026-09-27T02:00:00.000Z') }),
+    ).rejects.toThrow();
+    expect(dbBackups()).toContain('app-20260927-020000.db');
+  });
+
+  it('checks that the copy is a healthy database and reports it', async () => {
+    const result = await runBackup({ db, resumesDir, backupDir, now: new Date('2026-09-26T02:00:00.000Z') });
+    expect(result.verified).toBe(true);
+  });
+
   it('rejects a keepDays that is not a positive integer', async () => {
     for (const keepDays of [0, -1, 1.5, NaN]) {
       await expect(runBackup({ db, resumesDir, backupDir, keepDays })).rejects.toThrow(RangeError);

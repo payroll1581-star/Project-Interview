@@ -203,6 +203,7 @@ function notifyInterviewUpdated({ actor, candidate, interview, previous }) {
     for (const r of results) {
       if (r.status === 'rejected') console.error('[mailer] Failed to send interview update:', r.reason);
     }
+    if (!getInterview.get(interview.id)) return;
     logActivity({
       actor,
       action: 'interview.update_notified',
@@ -365,6 +366,8 @@ router.post('/', requireRole('admin'), (req, res) => {
       text: buildCandidateConfirmationEmail({ candidate, interview }),
     })
       .then(({ sent }) => {
+        // The mail can finish after the candidate was erased; logging then would re-add their name and email.
+        if (!getCandidate.get(candidate.id)) return;
         logActivity({
           actor: req.user,
           action: 'candidate.confirmation_sent',
@@ -376,6 +379,7 @@ router.post('/', requireRole('admin'), (req, res) => {
       })
       .catch((err) => {
         console.error(`[mailer] Failed to send candidate confirmation to ${candidate.email}:`, err);
+        if (!getCandidate.get(candidate.id)) return;
         logActivity({
           actor: req.user,
           action: 'candidate.confirmation_failed',

@@ -18,6 +18,7 @@ describe('emails sent when an interview is edited', () => {
   let priya;
   let daniel;
   let interviewId;
+  let candidateId;
 
   beforeAll(async () => {
     clearData();
@@ -45,9 +46,11 @@ describe('emails sent when an interview is edited', () => {
         room: 'Room 1',
         location: 'HQ',
       });
+    candidateId = candidate.body.id;
     interviewId = scheduled.body.interview.id;
     await vi.waitFor(() => expect(sendMail).toHaveBeenCalled());
     sendMail.mockClear();
+    sendMail.mockResolvedValue({ sent: true });
   });
 
   const patch = (body) =>
@@ -93,6 +96,54 @@ describe('emails sent when an interview is edited', () => {
     await patch({ room: 'Room 9' });
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(sendMail).not.toHaveBeenCalled();
+  });
+
+  describe('when the candidate is erased while an email is still being sent', () => {
+    const deleteCandidate = () =>
+      request(app).delete(`/api/candidates/${candidateId}`).set('Authorization', `Bearer ${adminToken}`).expect(204);
+    const activityLog = () => JSON.stringify(db.prepare('SELECT * FROM activity_log').all());
+
+    function holdSends() {
+      const releases = [];
+      sendMail.mockImplementation(() => new Promise((resolve) => releases.push(() => resolve({ sent: true }))));
+      return releases;
+    }
+
+    it('does not write the candidate back into the log after an update email', async () => {
+      const releases = holdSends();
+      await patch({ room: 'Room 9' });
+      await vi.waitFor(() => expect(releases).toHaveLength(3));
+
+      await deleteCandidate();
+      releases.forEach((release) => release());
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(activityLog()).not.toContain('Alice');
+      expect(activityLog()).not.toContain('alice@test.com');
+    });
+
+    it('does not write the candidate back into the log after a confirmation email', async () => {
+      const releases = holdSends();
+      await request(app)
+        .post('/api/interviews')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          candidateId,
+          interviewerIds: [priya.id],
+          date: new Date('2026-04-01T10:00:00.000Z').toISOString(),
+          durationMinutes: 30,
+          type: 'Phone',
+        })
+        .expect(201);
+      await vi.waitFor(() => expect(releases).toHaveLength(1));
+
+      await deleteCandidate();
+      releases.forEach((release) => release());
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(activityLog()).not.toContain('Alice');
+      expect(activityLog()).not.toContain('alice@test.com');
+    });
   });
 
   it('still returns 200 and logs the failure when a send rejects', async () => {
