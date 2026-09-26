@@ -8,7 +8,9 @@ function getTransporter() {
   transporterConfigured = true;
 
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+  // The test suite loads the real .env (dotenv in index.js) and schedules interviews for fake
+  // candidates -- never let it reach a real SMTP server, even if one is configured later.
+  if (process.env.NODE_ENV === 'test' || !SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
     transporter = null;
     return transporter;
   }

@@ -6,8 +6,11 @@ import { generateId } from './lib/ids.js';
 import { migrateCandidateInterviewedStatus } from './lib/migrations.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-// DB_PATH lets tests point at an isolated ':memory:' database instead of the real dev DB.
-const dbPath = process.env.DB_PATH ?? join(__dirname, 'data', 'app.db');
+// DB_PATH lets tests point at an isolated ':memory:' database instead of the real dev DB, and
+// lets a deployment keep the live DB outside a synced folder. `||`, not `??`: a blank
+// "DB_PATH=" line copied from .env.example must fall back to the default -- SQLite treats an
+// empty filename as a throwaway temporary database, which would silently lose every write.
+const dbPath = process.env.DB_PATH || join(__dirname, 'data', 'app.db');
 
 export const db = new Database(dbPath);
 db.pragma('foreign_keys = ON');

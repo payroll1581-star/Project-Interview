@@ -72,7 +72,7 @@ app.use((err, req, res, next) => {
 
 // Tests import `app` directly (via supertest) without wanting a real port bound.
 if (process.env.NODE_ENV !== 'test') {
-  const PORT = process.env.PORT ?? 3001;
+  const PORT = process.env.PORT || 3001;
   const server = app.listen(PORT, () => {
     console.log(`API server listening on http://localhost:${PORT}`);
   });

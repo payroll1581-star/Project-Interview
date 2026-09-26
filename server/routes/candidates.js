@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { existsSync, unlinkSync } from 'node:fs';
+import { unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { db } from '../db.js';
 import { generateId } from '../lib/ids.js';
@@ -7,6 +7,7 @@ import { serializeCandidate } from '../lib/serialize.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { logActivity } from '../lib/activityLog.js';
 import { RESUMES_DIR, uploadResume } from '../lib/uploads.js';
+import { ERASED_LABEL, deleteResumeFileIfAny, eraseCandidate } from '../lib/candidateData.js';
 
 const router = Router();
 
@@ -24,10 +25,6 @@ const insertCandidate = db.prepare(
   `INSERT INTO candidates (id, name, email, phone, position, status, resume_url, notes, created_at)
    VALUES (@id, @name, @email, @phone, @position, @status, @resumeUrl, @notes, @createdAt)`,
 );
-const deleteCandidate = db.prepare('DELETE FROM candidates WHERE id = ?');
-const countInterviewsForCandidate = db.prepare(
-  'SELECT COUNT(*) AS count FROM interviews WHERE candidate_id = ?',
-);
 const canInterviewerViewCandidate = db.prepare(
   `SELECT 1 FROM interviews
    JOIN interview_interviewers ON interview_interviewers.interview_id = interviews.id
@@ -36,12 +33,6 @@ const canInterviewerViewCandidate = db.prepare(
 const setResumeFile = db.prepare(
   'UPDATE candidates SET resume_url = ?, resume_filename = ? WHERE id = ?',
 );
-
-function deleteResumeFileIfAny(candidateRow) {
-  if (!candidateRow.resume_filename) return;
-  const filePath = join(RESUMES_DIR, candidateRow.resume_filename);
-  if (existsSync(filePath)) unlinkSync(filePath);
-}
 
 router.use(requireAuth);
 
@@ -181,15 +172,13 @@ router.delete('/:id', requireRole('admin'), (req, res) => {
     return res.status(404).json({ error: 'Candidate not found.' });
   }
 
-  const interviewCount = countInterviewsForCandidate.get(req.params.id).count;
-  deleteResumeFileIfAny(existing);
-  deleteCandidate.run(req.params.id);
+  const { interviewCount } = eraseCandidate(existing);
   logActivity({
     actor: req.user,
     action: 'candidate.deleted',
     entityType: 'candidate',
     entityId: existing.id,
-    entityLabel: existing.name,
+    entityLabel: ERASED_LABEL,
     details: interviewCount > 0 ? `Also removed ${interviewCount} associated interview(s).` : undefined,
   });
 
