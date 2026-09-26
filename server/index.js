@@ -6,6 +6,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import { db } from './db.js';
+import { parseTrustProxy } from './lib/trustProxy.js';
 import authRoutes from './routes/auth.js';
 import candidatesRoutes from './routes/candidates.js';
 import interviewsRoutes from './routes/interviews.js';
@@ -14,6 +15,7 @@ import evaluationTemplateRoutes from './routes/evaluation-template.js';
 import activityLogRoutes from './routes/activity-log.js';
 
 export const app = express();
+app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
 app.use(helmet());
 
 // Same-origin only by default (the Vite dev proxy makes browser requests same-origin,

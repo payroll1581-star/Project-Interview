@@ -6,15 +6,17 @@
 .DESCRIPTION
   Run from an elevated (Administrator) PowerShell in a deployed copy of the project
   (dependencies installed, "npm run build" done, .env filled in -- see README.md).
-  Creates two scheduled tasks and one firewall rule:
+  Creates two scheduled tasks and, unless -SkipFirewall is given, one firewall rule:
     InterviewApp-Server  runs "node scripts/start-prod.mjs" at startup, restarting on failure
     InterviewApp-Backup  runs "node server/backup.js" every day at -BackupTime
     InterviewApp-Port    allows inbound TCP on -Port from the local subnet only (Private/Domain networks)
+  Behind an HTTPS reverse proxy on the same machine use -SkipFirewall: the app port should stay closed.
   Use -WhatIf to see what would happen without changing anything, and -Remove to undo it all.
 
 .PARAMETER AppDir     Project folder. Defaults to the folder above this script's "scripts" directory.
 .PARAMETER Port       Must match PORT in .env (3001 if unset).
 .PARAMETER BackupTime Local time of the daily backup, e.g. "02:00".
+.PARAMETER SkipFirewall Do not open the app port to the network (use this behind a reverse proxy).
 #>
 #Requires -RunAsAdministrator
 [CmdletBinding(SupportsShouldProcess = $true)]
@@ -22,6 +24,7 @@ param(
   [string]$AppDir = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path,
   [int]$Port = 3001,
   [string]$BackupTime = '02:00',
+  [switch]$SkipFirewall,
   [switch]$Remove
 )
 
@@ -72,11 +75,15 @@ if ($PSCmdlet.ShouldProcess($backupTask, "Register scheduled task (daily at $Bac
     -Action $backupAction -Trigger (New-ScheduledTaskTrigger -Daily -At $BackupTime) -Force | Out-Null
 }
 
-if ($PSCmdlet.ShouldProcess($firewallRule, "Allow inbound TCP $Port from the local subnet")) {
+if (-not $SkipFirewall -and $PSCmdlet.ShouldProcess($firewallRule, "Allow inbound TCP $Port from the local subnet")) {
   Get-NetFirewallRule -DisplayName $firewallRule -ErrorAction SilentlyContinue | Remove-NetFirewallRule
   New-NetFirewallRule -DisplayName $firewallRule -Direction Inbound -Action Allow -Protocol TCP `
     -LocalPort $Port -RemoteAddress LocalSubnet -Profile Private, Domain | Out-Null
 }
 
 Write-Host "Done. Start the server now with: Start-ScheduledTask -TaskName $serverTask"
-Write-Host "Then open http://$($env:COMPUTERNAME):$Port from another computer on the same network."
+if ($SkipFirewall) {
+  Write-Host "Point the HTTPS reverse proxy at http://localhost:$Port (see README.md)."
+} else {
+  Write-Host "Port $Port is open to the local subnet. Browsers need HTTPS in front of the app (see README.md)."
+}
