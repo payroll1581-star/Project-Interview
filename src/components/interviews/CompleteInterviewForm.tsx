@@ -20,7 +20,7 @@ interface CompleteInterviewFormProps {
 
 export function CompleteInterviewForm({ open, onClose, interviewId }: CompleteInterviewFormProps) {
   return (
-    <Modal open={open} onClose={onClose} title="Complete Interview" size="2xl">
+    <Modal open={open} onClose={onClose} title="Complete Interview" size="2xl" expandable>
       {open && <CompleteForm onClose={onClose} interviewId={interviewId} />}
     </Modal>
   );
