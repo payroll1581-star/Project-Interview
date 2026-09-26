@@ -18,8 +18,8 @@ const getScoresForInterview = db.prepare(
   'SELECT section_name, criterion_name, score FROM evaluation_scores WHERE interview_id = ? ORDER BY sort_order',
 );
 const insertInterview = db.prepare(
-  `INSERT INTO interviews (id, candidate_id, date, duration_minutes, type, status, location, notes)
-   VALUES (@id, @candidateId, @date, @durationMinutes, @type, 'Scheduled', @location, @notes)`,
+  `INSERT INTO interviews (id, candidate_id, date, duration_minutes, type, status, location, room, notes)
+   VALUES (@id, @candidateId, @date, @durationMinutes, @type, 'Scheduled', @location, @room, @notes)`,
 );
 const insertInterviewer = db.prepare('INSERT INTO interview_interviewers (interview_id, user_id) VALUES (?, ?)');
 const getCandidate = db.prepare('SELECT * FROM candidates WHERE id = ?');
@@ -40,6 +40,10 @@ const insertScore = db.prepare(
   `INSERT INTO evaluation_scores (interview_id, sort_order, section_name, criterion_name, score)
    VALUES (?, ?, ?, ?, ?)`,
 );
+
+function normalizeRoom(room) {
+  return typeof room === 'string' && room.trim() ? room.trim() : null;
+}
 
 function loadInterview(id) {
   const row = getInterview.get(id);
@@ -94,6 +98,7 @@ function buildNotificationEmail({ interviewer, candidate, interview, message }) 
     '',
     `Date & time: ${formatInterviewDateTime(interview.date)}`,
     `Type: ${interview.type}`,
+    interview.room ? `Room: ${interview.room}` : null,
     interview.location ? `Location: ${interview.location}` : null,
     '',
     message ? `Message from the scheduler:\n${message}` : null,
@@ -109,6 +114,7 @@ function buildCandidateConfirmationEmail({ candidate, interview }) {
     `This confirms your ${interview.type.toLowerCase()} interview${candidate.position ? ` for ${candidate.position}` : ''}.`,
     '',
     `Date & time: ${formatInterviewDateTime(interview.date)}`,
+    interview.room ? `Room: ${interview.room}` : null,
     interview.location ? `Location: ${interview.location}` : null,
     '',
     "We look forward to speaking with you. If you have any questions or need to reschedule, please reply to this email.",
@@ -151,7 +157,7 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', requireRole('admin'), (req, res) => {
-  const { candidateId, interviewerIds, date, durationMinutes, type, location, notes } = req.body ?? {};
+  const { candidateId, interviewerIds, date, durationMinutes, type, location, room, notes } = req.body ?? {};
   if (!candidateId || !Array.isArray(interviewerIds) || interviewerIds.length === 0 || !date || !durationMinutes || !type) {
     return res.status(400).json({
       error: 'candidateId, interviewerIds (non-empty), date, durationMinutes, and type are required.',
@@ -169,6 +175,7 @@ router.post('/', requireRole('admin'), (req, res) => {
     durationMinutes,
     type,
     location: location ?? null,
+    room: normalizeRoom(room),
     notes: notes ?? null,
   };
 
@@ -409,12 +416,13 @@ router.patch('/:id', requireRole('admin'), (req, res) => {
     duration_minutes: patch.durationMinutes ?? existing.duration_minutes,
     type: patch.type ?? existing.type,
     location: 'location' in patch ? (patch.location ?? null) : existing.location,
+    room: 'room' in patch ? normalizeRoom(patch.room) : existing.room,
     notes: 'notes' in patch ? (patch.notes ?? null) : existing.notes,
   };
 
   db.prepare(
     `UPDATE interviews SET date = @date, duration_minutes = @duration_minutes, type = @type,
-       location = @location, notes = @notes WHERE id = @id`,
+       location = @location, room = @room, notes = @notes WHERE id = @id`,
   ).run(merged);
 
   const rescheduledCandidate = getCandidate.get(existing.candidate_id);

@@ -28,6 +28,7 @@ function ensureColumn(table, column, definition) {
 ensureColumn('users', 'position', 'TEXT');
 ensureColumn('interviews', 'eval_interviewer_signature', 'TEXT');
 ensureColumn('interviews', 'eval_interviewer_position', 'TEXT');
+ensureColumn('interviews', 'room', 'TEXT');
 // Server-internal only (never serialized to the frontend) -- the on-disk filename of an
 // uploaded resume, looked up by GET /api/candidates/:id/resume. `resume_url` stays the
 // public-facing value (either an external link or the stable internal download path).

@@ -77,7 +77,14 @@ export function InterviewList({
                 <TableCell className="whitespace-nowrap">
                   {compact ? formatShortDateTime(interview.date) : formatDateTime(interview.date)}
                 </TableCell>
-                <TableCell>{interview.type}</TableCell>
+                <TableCell>
+                  {interview.type}
+                  {interview.room && (
+                    <span className="block max-w-[9rem] truncate text-xs text-slate-500" title={interview.room}>
+                      {interview.room}
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell>
                   {compact ? (
                     <span className="block max-w-[7rem] truncate" title={interviewerNames}>

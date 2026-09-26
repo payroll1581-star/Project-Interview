@@ -86,6 +86,7 @@ export function AppraisalReportPage() {
                 <p className="text-slate-600">
                   {interview.interviewerIds.map((id) => getUserById(id)?.name ?? 'Unknown').join(', ')}
                 </p>
+                {interview.room && <p className="text-slate-600">Room: {interview.room}</p>}
                 {interview.location && <p className="text-slate-600">{interview.location}</p>}
               </div>
             </div>

@@ -53,6 +53,7 @@ export function serializeInterview(row, interviewerIds, scoreRows) {
     type: row.type,
     status: row.status,
     location: row.location ?? undefined,
+    room: row.room ?? undefined,
     notes: row.notes ?? undefined,
   };
 

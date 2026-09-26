@@ -33,6 +33,7 @@ function ScheduleForm({ onClose, candidateId }: { onClose: () => void; candidate
   const [dateTime, setDateTime] = useState(defaultDateTime);
   const [duration, setDuration] = useState(45);
   const [type, setType] = useState<InterviewType>('Technical');
+  const [room, setRoom] = useState('');
   const [location, setLocation] = useState('');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +56,7 @@ function ScheduleForm({ onClose, candidateId }: { onClose: () => void; candidate
         date: isoDate,
         durationMinutes: duration,
         type,
+        room: room.trim() || undefined,
         location: location || undefined,
         notes: notes || undefined,
       });
@@ -137,6 +139,12 @@ function ScheduleForm({ onClose, candidateId }: { onClose: () => void; candidate
           ))}
         </Select>
       </div>
+      <Input
+        label="Interview room"
+        placeholder="e.g. HQ - Room 4B"
+        value={room}
+        onChange={(e) => setRoom(e.target.value)}
+      />
       <Input label="Location / meeting link" value={location} onChange={(e) => setLocation(e.target.value)} />
       <Textarea label="Notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
       {error && <p className="text-sm text-red-600">{error}</p>}

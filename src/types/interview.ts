@@ -29,6 +29,7 @@ export interface Interview {
   type: InterviewType;
   status: InterviewStatus;
   location?: string;
+  room?: string;
   notes?: string;
   evaluation?: Evaluation;
 }

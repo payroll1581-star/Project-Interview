@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS interviews (
   type TEXT NOT NULL CHECK (type IN ('Phone', 'Technical', 'Onsite', 'Final')),
   status TEXT NOT NULL CHECK (status IN ('Scheduled', 'Completed', 'Cancelled')) DEFAULT 'Scheduled',
   location TEXT,
+  room TEXT,
   notes TEXT,
   eval_total INTEGER,
   eval_result TEXT CHECK (eval_result IN ('Hire', 'Compare', 'Reject')),

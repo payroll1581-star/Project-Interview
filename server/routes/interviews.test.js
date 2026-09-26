@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import { app } from '../index.js';
-import { clearData, createUser } from '../test/helpers.js';
+import { clearData, clearCandidatesAndInterviews, createUser } from '../test/helpers.js';
 
 async function loginAs(email, password) {
   const res = await request(app).post('/api/auth/login').send({ email, password });
@@ -12,7 +12,8 @@ describe('POST /api/interviews (scheduling)', () => {
   let adminToken;
   let interviewer;
 
-  beforeEach(async () => {
+  // Log in once per describe: the login rate limiter (10 per 15 min) is shared module state.
+  beforeAll(async () => {
     clearData();
     createUser({ name: 'Admin', email: 'admin@test.com', password: 'admin123', role: 'admin' });
     adminToken = await loginAs('admin@test.com', 'admin123');
@@ -22,6 +23,10 @@ describe('POST /api/interviews (scheduling)', () => {
       password: 'pw123456',
       role: 'interviewer',
     });
+  });
+
+  beforeEach(() => {
+    clearCandidatesAndInterviews();
   });
 
   async function createCandidate(status) {
@@ -83,6 +88,59 @@ describe('POST /api/interviews (scheduling)', () => {
     expect(res.body.interview.interviewerIds).toEqual([interviewer.id]);
   });
 
+  it('stores the interview room (trimmed) and returns it', async () => {
+    const candidate = await createCandidate('Applied');
+    const res = await request(app)
+      .post('/api/interviews')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        candidateId: candidate.id,
+        interviewerIds: [interviewer.id],
+        date: new Date('2026-01-15T10:00:00.000Z').toISOString(),
+        durationMinutes: 30,
+        type: 'Onsite',
+        room: '  HQ - Room 4B  ',
+      });
+    expect(res.status).toBe(201);
+    expect(res.body.interview.room).toBe('HQ - Room 4B');
+
+    const list = await request(app).get('/api/interviews').set('Authorization', `Bearer ${adminToken}`);
+    expect(list.body.find((i) => i.id === res.body.interview.id).room).toBe('HQ - Room 4B');
+  });
+
+  it('leaves room unset when omitted or blank', async () => {
+    const candidate = await createCandidate('Applied');
+    const omitted = await schedule(candidate.id);
+    expect(omitted.body.interview.room).toBeUndefined();
+
+    const blank = await request(app)
+      .post('/api/interviews')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        candidateId: candidate.id,
+        interviewerIds: [interviewer.id],
+        date: new Date('2026-01-16T10:00:00.000Z').toISOString(),
+        durationMinutes: 30,
+        type: 'Phone',
+        room: '   ',
+      });
+    expect(blank.body.interview.room).toBeUndefined();
+  });
+
+  it('updates and clears the room via PATCH, leaving it alone when not sent', async () => {
+    const candidate = await createCandidate('Applied');
+    const { interview } = (await schedule(candidate.id)).body;
+    const patch = (body) =>
+      request(app)
+        .patch(`/api/interviews/${interview.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(body);
+
+    expect((await patch({ room: 'Room 2A' })).body.room).toBe('Room 2A');
+    expect((await patch({ notes: 'x' })).body.room).toBe('Room 2A');
+    expect((await patch({ room: '' })).body.room).toBeUndefined();
+  });
+
   it('rejects scheduling for a candidate that does not exist', async () => {
     const res = await request(app)
       .post('/api/interviews')
@@ -118,7 +176,7 @@ describe('interview lifecycle guards', () => {
   let interviewer;
   let interviewId;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     clearData();
     createUser({ name: 'Admin', email: 'admin@test.com', password: 'admin123', role: 'admin' });
     adminToken = await loginAs('admin@test.com', 'admin123');
@@ -128,6 +186,10 @@ describe('interview lifecycle guards', () => {
       password: 'pw123456',
       role: 'interviewer',
     });
+  });
+
+  beforeEach(async () => {
+    clearCandidatesAndInterviews();
     const candidate = await request(app)
       .post('/api/candidates')
       .set('Authorization', `Bearer ${adminToken}`)
