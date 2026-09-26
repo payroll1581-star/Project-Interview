@@ -43,6 +43,9 @@ export function DashboardPage() {
         <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Upcoming interviews</CardTitle>
+            <p className="mt-1 text-xs text-slate-500">
+              การสัมภาษณ์ที่นัดหมายไว้และยังไม่ถึงกำหนด เรียงจากใกล้ที่สุด แสดงสูงสุด 5 รายการ
+            </p>
           </CardHeader>
           <CardContent>
             <div className="-mx-5">
