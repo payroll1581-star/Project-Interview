@@ -165,10 +165,95 @@ function buildInterviewUpdatedEmail({ greetingName, candidate, interview, previo
   return lines.join('\n');
 }
 
+function buildAssignmentEmail({ interviewer, candidate, interview }) {
+  const lines = [
+    `Hi ${interviewer.name},`,
+    '',
+    `You have been assigned to interview ${candidate.name}${candidate.position ? ` for ${candidate.position}` : ''}.`,
+    '',
+    `Date & time: ${formatInterviewDateTime(interview.date)}`,
+    `Type: ${interview.type}`,
+    interview.room ? `Room: ${interview.room}` : null,
+    interview.location ? `Location: ${interview.location}` : null,
+    '',
+    'Please add it to your calendar.',
+  ].filter((line) => line !== null);
+
+  return lines.join('\n');
+}
+
+function buildCancellationEmail({ interviewer, candidate, interview }) {
+  return [
+    `Hi ${interviewer.name},`,
+    '',
+    `The ${interview.type.toLowerCase()} interview with ${candidate.name}${candidate.position ? ` for ${candidate.position}` : ''} scheduled for ${formatInterviewDateTime(interview.date)} has been cancelled.`,
+    '',
+    'No action is needed from you.',
+  ].join('\n');
+}
+
+function assignedInterviewers(interviewId) {
+  return getInterviewerIds
+    .all(interviewId)
+    .map(({ userId }) => getUserRow.get(userId))
+    .filter((interviewer) => interviewer?.email);
+}
+
 // Fire-and-forget (like the scheduling confirmation): a slow or failing mail server must never
-// delay or fail the edit itself. Only counts are logged, never the recipients' addresses.
+// delay or fail the request itself. Only counts are logged, never the recipients' addresses.
+function sendAndLog({ mails, subject, actor, action, interview, candidate }) {
+  if (mails.length === 0) return;
+
+  Promise.allSettled(mails.map((mail) => sendMail({ to: mail.to, subject, text: mail.text }))).then((results) => {
+    const delivered = results.filter((r) => r.status === 'fulfilled' && r.value?.sent).length;
+    for (const r of results) {
+      if (r.status === 'rejected') console.error(`[mailer] Failed to send (${action}):`, r.reason);
+    }
+    // The mail can finish after the interview was erased along with its candidate; logging then
+    // would write the candidate's name back into the activity log.
+    if (!getInterview.get(interview.id)) return;
+    logActivity({
+      actor,
+      action,
+      entityType: 'interview',
+      entityId: interview.id,
+      entityLabel: candidate?.name,
+      details: `${delivered}/${mails.length} sent${delivered < mails.length ? ' (see server log for details)' : ''}`,
+    });
+  });
+}
+
+function notifyInterviewersOfAssignment({ actor, candidate, interview }) {
+  sendAndLog({
+    mails: assignedInterviewers(interview.id).map((interviewer) => ({
+      to: interviewer.email,
+      text: buildAssignmentEmail({ interviewer, candidate, interview }),
+    })),
+    subject: `New interview assigned — ${formatInterviewDateTime(interview.date)}`,
+    actor,
+    action: 'interview.assignment_notified',
+    interview,
+    candidate,
+  });
+}
+
+// An interview whose time has passed has nothing left to warn anyone about.
+function notifyInterviewersOfCancellation({ actor, candidate, interview }) {
+  if (new Date(interview.date).getTime() <= Date.now()) return;
+  sendAndLog({
+    mails: assignedInterviewers(interview.id).map((interviewer) => ({
+      to: interviewer.email,
+      text: buildCancellationEmail({ interviewer, candidate, interview }),
+    })),
+    subject: `Interview cancelled — ${formatInterviewDateTime(interview.date)}`,
+    actor,
+    action: 'interview.cancel_notified',
+    interview,
+    candidate,
+  });
+}
+
 function notifyInterviewUpdated({ actor, candidate, interview, previous }) {
-  const subject = `Interview updated — ${formatInterviewDateTime(interview.date)}`;
   const mails = [];
   if (candidate?.email) {
     mails.push({
@@ -182,9 +267,7 @@ function notifyInterviewUpdated({ actor, candidate, interview, previous }) {
       }),
     });
   }
-  for (const { userId } of getInterviewerIds.all(interview.id)) {
-    const interviewer = getUserRow.get(userId);
-    if (!interviewer?.email) continue;
+  for (const interviewer of assignedInterviewers(interview.id)) {
     mails.push({
       to: interviewer.email,
       text: buildInterviewUpdatedEmail({
@@ -196,22 +279,13 @@ function notifyInterviewUpdated({ actor, candidate, interview, previous }) {
       }),
     });
   }
-  if (mails.length === 0) return;
-
-  Promise.allSettled(mails.map((mail) => sendMail({ to: mail.to, subject, text: mail.text }))).then((results) => {
-    const delivered = results.filter((r) => r.status === 'fulfilled' && r.value?.sent).length;
-    for (const r of results) {
-      if (r.status === 'rejected') console.error('[mailer] Failed to send interview update:', r.reason);
-    }
-    if (!getInterview.get(interview.id)) return;
-    logActivity({
-      actor,
-      action: 'interview.update_notified',
-      entityType: 'interview',
-      entityId: interview.id,
-      entityLabel: candidate?.name,
-      details: `${delivered}/${mails.length} sent${delivered < mails.length ? ' (see server log for details)' : ''}`,
-    });
+  sendAndLog({
+    mails,
+    subject: `Interview updated — ${formatInterviewDateTime(interview.date)}`,
+    actor,
+    action: 'interview.update_notified',
+    interview,
+    candidate,
   });
 }
 
@@ -391,6 +465,8 @@ router.post('/', requireRole('admin'), (req, res) => {
       });
   }
 
+  notifyInterviewersOfAssignment({ actor: req.user, candidate, interview });
+
   res.status(201).json({
     interview: loadInterview(interview.id),
     candidate: serializeCandidate(getCandidate.get(candidateId)),
@@ -421,6 +497,9 @@ router.post('/:id/cancel', requireRole('admin'), (req, res) => {
   });
   if (advancedCandidate) {
     logInterviewedAdvance(req.user, candidate);
+  }
+  if (candidate) {
+    notifyInterviewersOfCancellation({ actor: req.user, candidate, interview: existing });
   }
 
   res.json({

@@ -112,8 +112,16 @@ mirrors the resume files into `BACKUP_DIR\resumes`, and deletes database copies 
 
 ## What the system emails
 
-Candidate confirmation when an interview is scheduled; an "interview updated" notice to the candidate and the assigned
-interviewers when the time, room or location changes; and the manual **Notify** reminder to interviewers.
+- **When an interview is scheduled:** a confirmation to the candidate, and a "New interview assigned" email to each
+  assigned interviewer (candidate name and position only, never their contact details).
+- **When the time, room or location changes:** an "Interview updated" notice to the candidate and the interviewers.
+- **When an interview is cancelled:** a "cancelled" notice to the interviewers (not the candidate). Nothing is sent if
+  the interview's time has already passed.
+- **Manual reminder:** the **Notify** button on a scheduled interview emails its interviewers on demand.
+
+There are no automatic timed reminders. Emails are only really sent once the `SMTP_*` settings in `.env` are filled in
+(ask IT for the mail server, port, sender address and credentials or relay); until then they are printed to the server log.
+Each batch is recorded in the activity log as a count ("2/2 sent"), never with addresses.
 
 Scheduling refuses double-bookings (same interviewer or same room at overlapping times) and lets an admin override
 with "Schedule anyway".

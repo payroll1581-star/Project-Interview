@@ -135,7 +135,8 @@ describe('emails sent when an interview is edited', () => {
           type: 'Phone',
         })
         .expect(201);
-      await vi.waitFor(() => expect(releases).toHaveLength(1));
+      // One to the candidate, one to the single assigned interviewer.
+      await vi.waitFor(() => expect(releases).toHaveLength(2));
 
       await deleteCandidate();
       releases.forEach((release) => release());
