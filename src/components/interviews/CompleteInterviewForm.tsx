@@ -77,7 +77,7 @@ function CompleteForm({ onClose, interviewId }: { onClose: () => void; interview
   if (allCriteria.length === 0) {
     return (
       <div className="flex flex-col gap-4">
-        <p className="text-sm text-slate-500">
+        <p className="text-base text-slate-500">
           No evaluation criteria are configured yet. Ask an admin to set some up on the Evaluation Criteria
           page.
         </p>
@@ -93,24 +93,24 @@ function CompleteForm({ onClose, interviewId }: { onClose: () => void; interview
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
       {interview && (
-        <div className="grid grid-cols-2 gap-3 border-b border-slate-100 pb-3 text-sm">
+        <div className="grid grid-cols-2 gap-3 border-b border-slate-100 pb-3 text-base">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Candidate Name</p>
-            <p className="text-slate-800">{candidate?.name ?? 'Unknown candidate'}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Candidate Name</p>
+            <p className="text-base text-slate-800">{candidate?.name ?? 'Unknown candidate'}</p>
           </div>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Position</p>
-            <p className="text-slate-800">{candidate?.position ?? '—'}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Position</p>
+            <p className="text-base text-slate-800">{candidate?.position ?? '—'}</p>
           </div>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Date</p>
-            <p className="text-slate-800">{formatDate(interview.date)}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Date</p>
+            <p className="text-base text-slate-800">{formatDate(interview.date)}</p>
           </div>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Interview By</p>
-            <p className="text-slate-800">{interviewerNames}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Interview By</p>
+            <p className="text-base text-slate-800">{interviewerNames}</p>
           </div>
-          <ResumeLink url={candidate?.resumeUrl} className="col-span-2" />
+          <ResumeLink url={candidate?.resumeUrl} className="col-span-2 text-base!" />
         </div>
       )}
 
@@ -119,7 +119,7 @@ function CompleteForm({ onClose, interviewId }: { onClose: () => void; interview
           <ScoreGridHeader />
           {evaluationTemplate.map((section) => (
             <Fragment key={section.id}>
-              <p className="bg-slate-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <p className="bg-slate-50 px-3 py-1.5 text-sm font-semibold uppercase tracking-wide text-slate-400">
                 {section.name}
               </p>
               {section.criteria.map((criterion) => (
@@ -137,40 +137,46 @@ function CompleteForm({ onClose, interviewId }: { onClose: () => void; interview
 
       <div className="sticky bottom-0 -mx-5 -mb-4 flex items-center justify-between gap-4 border-t border-slate-200 bg-white px-5 py-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total Evaluation</p>
-          <p className="text-lg font-semibold text-slate-800">
-            {totalScore} <span className="text-sm font-normal text-slate-400">/ {maxScore}</span>
+          <p className="text-sm font-semibold uppercase tracking-wide text-slate-400">Total Evaluation</p>
+          <p className="text-2xl font-semibold text-slate-800">
+            {totalScore} <span className="text-base font-normal text-slate-400">/ {maxScore}</span>
           </p>
           <div className="mt-1">
             <EvaluationResultPill result={liveResult} />
           </div>
         </div>
         <CircularGauge percent={livePercent} strokeClassName={strokeColorClasses[evaluationResultStyles[liveResult]]}>
-          <span className="text-sm font-semibold text-slate-700">{Math.round(livePercent)}%</span>
+          <span className="text-base font-semibold text-slate-700">{Math.round(livePercent)}%</span>
         </CircularGauge>
       </div>
-      <p className="text-[11px] text-slate-400">Guide: {evaluationResultGuide}</p>
+      <p className="text-xs text-slate-400">Guide: {evaluationResultGuide}</p>
 
       <Input
         label="Interviewer Signature"
+        labelClassName="text-sm!"
+        className="text-base!"
         required
         value={signature}
         onChange={(e) => setSignature(e.target.value)}
       />
       <Input
         label="Interviewer Position"
+        labelClassName="text-sm!"
+        className="text-base!"
         value={interviewerPosition}
         onChange={(e) => setInterviewerPosition(e.target.value)}
       />
 
       <Textarea
         label="Other Comment"
+        labelClassName="text-sm!"
+        className="text-base!"
         rows={4}
         placeholder="How did the candidate perform?"
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
       />
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-base text-red-600">{error}</p>}
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onClose}>
           Cancel
