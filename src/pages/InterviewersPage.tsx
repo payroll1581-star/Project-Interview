@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, UserRound } from 'lucide-react';
 import { useAppData } from '../context/useAppData';
 import { InterviewerFormModal } from '../components/interviewers/InterviewerFormModal';
+import { ResetPasswordModal } from '../components/interviewers/ResetPasswordModal';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '../components/ui/Table';
@@ -12,6 +13,8 @@ export function InterviewersPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [resettingId, setResettingId] = useState<string | null>(null);
 
   async function handleRemove(id: string) {
     setRemovingId(id);
@@ -68,6 +71,12 @@ export function InterviewersPage() {
                     <TableCell>{interviewer.email}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
+                        <Button size="sm" variant="secondary" onClick={() => setEditingId(interviewer.id)}>
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={() => setResettingId(interviewer.id)}>
+                          Reset password
+                        </Button>
                         <Button
                           size="sm"
                           variant="secondary"
@@ -95,6 +104,16 @@ export function InterviewersPage() {
       </Card>
 
       <InterviewerFormModal open={isAddOpen} onClose={() => setIsAddOpen(false)} />
+      <InterviewerFormModal
+        open={editingId !== null}
+        onClose={() => setEditingId(null)}
+        interviewer={interviewers.find((i) => i.id === editingId)}
+      />
+      <ResetPasswordModal
+        open={resettingId !== null}
+        onClose={() => setResettingId(null)}
+        interviewer={interviewers.find((i) => i.id === resettingId)}
+      />
     </div>
   );
 }

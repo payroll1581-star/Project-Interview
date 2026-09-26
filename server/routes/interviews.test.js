@@ -141,6 +141,68 @@ describe('POST /api/interviews (scheduling)', () => {
     expect((await patch({ room: '' })).body.room).toBeUndefined();
   });
 
+  it('rejects a room that is not a string or is longer than 100 characters', async () => {
+    const candidate = await createCandidate('Applied');
+    const post = (room) =>
+      request(app)
+        .post('/api/interviews')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          candidateId: candidate.id,
+          interviewerIds: [interviewer.id],
+          date: new Date('2026-01-15T10:00:00.000Z').toISOString(),
+          durationMinutes: 30,
+          type: 'Phone',
+          room,
+        });
+
+    expect((await post(12345)).status).toBe(400);
+    expect((await post('x'.repeat(101))).status).toBe(400);
+    expect((await post('x'.repeat(100))).status).toBe(201);
+  });
+
+  it('rejects an invalid room on PATCH without touching the stored room', async () => {
+    const candidate = await createCandidate('Applied');
+    const { interview } = (await schedule(candidate.id)).body;
+    const patch = (body) =>
+      request(app)
+        .patch(`/api/interviews/${interview.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(body);
+    await patch({ room: 'Room 2A' });
+
+    expect((await patch({ room: 12345 })).status).toBe(400);
+    expect((await patch({ room: 'x'.repeat(101) })).status).toBe(400);
+    expect((await patch({ notes: 'still here' })).body.room).toBe('Room 2A');
+    expect((await patch({ room: null })).body.room).toBeUndefined();
+  });
+
+  it('clears location and notes on PATCH when sent as empty strings', async () => {
+    const candidate = await createCandidate('Applied');
+    const created = await request(app)
+      .post('/api/interviews')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        candidateId: candidate.id,
+        interviewerIds: [interviewer.id],
+        date: new Date('2026-01-15T10:00:00.000Z').toISOString(),
+        durationMinutes: 30,
+        type: 'Onsite',
+        location: 'Somewhere',
+        notes: 'Bring laptop',
+      });
+    expect(created.body.interview.location).toBe('Somewhere');
+
+    const res = await request(app)
+      .patch(`/api/interviews/${created.body.interview.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ location: '', notes: '' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.location).toBeUndefined();
+    expect(res.body.notes).toBeUndefined();
+  });
+
   it('rejects scheduling for a candidate that does not exist', async () => {
     const res = await request(app)
       .post('/api/interviews')

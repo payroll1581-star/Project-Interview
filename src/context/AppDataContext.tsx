@@ -28,6 +28,7 @@ type Action =
   | { type: 'ADD_INTERVIEW'; interview: Interview }
   | { type: 'UPDATE_INTERVIEW'; id: string; interview: Interview }
   | { type: 'ADD_USER'; user: AppUser }
+  | { type: 'UPDATE_USER'; id: string; user: AppUser }
   | { type: 'REMOVE_USER'; id: string }
   | { type: 'SET_EVALUATION_TEMPLATE'; evaluationTemplate: EvaluationSection[] };
 
@@ -64,6 +65,8 @@ function reducer(state: State, action: Action): State {
       };
     case 'ADD_USER':
       return { ...state, users: [...state.users, action.user] };
+    case 'UPDATE_USER':
+      return { ...state, users: state.users.map((u) => (u.id === action.id ? action.user : u)) };
     case 'REMOVE_USER':
       return { ...state, users: state.users.filter((u) => u.id !== action.id) };
     case 'SET_EVALUATION_TEMPLATE':
@@ -119,6 +122,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const user = await api.post<AppUser>('/users', input);
       dispatch({ type: 'ADD_USER', user });
       return user;
+    };
+
+    const updateInterviewer: AppDataContextValue['updateInterviewer'] = async (id, patch) => {
+      const user = await api.patch<AppUser>(`/users/${id}`, patch);
+      dispatch({ type: 'UPDATE_USER', id, user });
+    };
+
+    const resetInterviewerPassword: AppDataContextValue['resetInterviewerPassword'] = async (id, newPassword) => {
+      await api.post(`/users/${id}/reset-password`, { newPassword });
     };
 
     const removeInterviewer: AppDataContextValue['removeInterviewer'] = async (id) => {
@@ -312,6 +324,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       getInterviewsForInterviewer,
       getUserById,
       addInterviewer,
+      updateInterviewer,
+      resetInterviewerPassword,
       removeInterviewer,
       revokeUserSessions,
       addEvaluationSection,

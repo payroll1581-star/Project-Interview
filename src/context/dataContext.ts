@@ -24,6 +24,10 @@ export interface InterviewTrend {
   positions: string[];
 }
 
+// allowConflict lets an admin knowingly double-book after the server rejected the slot.
+export type ScheduleInterviewInput = Omit<Interview, 'id' | 'status'> & { allowConflict?: boolean };
+export type InterviewPatch = Partial<Interview> & { allowConflict?: boolean };
+
 export interface AppDataContextValue {
   candidates: Candidate[];
   interviews: Interview[];
@@ -41,8 +45,8 @@ export interface AppDataContextValue {
   uploadResume: (candidateId: string, file: File) => Promise<void>;
   removeResume: (candidateId: string) => Promise<void>;
   getCandidateById: (id: string) => Candidate | undefined;
-  scheduleInterview: (input: Omit<Interview, 'id' | 'status'>) => Promise<Interview>;
-  updateInterview: (id: string, patch: Partial<Interview>) => Promise<void>;
+  scheduleInterview: (input: ScheduleInterviewInput) => Promise<Interview>;
+  updateInterview: (id: string, patch: InterviewPatch) => Promise<void>;
   cancelInterview: (id: string) => Promise<void>;
   notifyInterview: (id: string, message?: string) => Promise<{ results: NotifyRecipientResult[] }>;
   completeInterview: (id: string, evaluation: EvaluationSubmission) => Promise<void>;
@@ -50,6 +54,8 @@ export interface AppDataContextValue {
   getInterviewsForInterviewer: (interviewerId: string) => Interview[];
   getUserById: (id: string) => AppUser | undefined;
   addInterviewer: (input: { name: string; email: string; password: string; position?: string }) => Promise<AppUser>;
+  updateInterviewer: (id: string, patch: { name?: string; position?: string }) => Promise<void>;
+  resetInterviewerPassword: (id: string, newPassword: string) => Promise<void>;
   removeInterviewer: (id: string) => Promise<void>;
   revokeUserSessions: (id: string) => Promise<void>;
   addEvaluationSection: (name: string) => Promise<void>;

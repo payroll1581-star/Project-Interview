@@ -11,6 +11,7 @@ import { Button } from '../ui/Button';
 import { ResumeLink } from '../ui/ResumeLink';
 import { CompleteInterviewForm } from './CompleteInterviewForm';
 import { NotifyInterviewForm } from './NotifyInterviewForm';
+import { ScheduleInterviewForm } from './ScheduleInterviewForm';
 import { formatDateTime, formatShortDateTime } from '../../lib/date';
 
 export function InterviewList({
@@ -29,6 +30,7 @@ export function InterviewList({
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [notifyingId, setNotifyingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const isAdmin = currentUser?.role === 'admin';
 
   async function handleCancel(id: string) {
@@ -121,6 +123,11 @@ export function InterviewList({
                           </Button>
                         )}
                         {isAdmin && (
+                          <Button size="sm" variant="secondary" onClick={() => setEditingId(interview.id)}>
+                            Edit
+                          </Button>
+                        )}
+                        {isAdmin && (
                           <Button size="sm" variant="secondary" onClick={() => setNotifyingId(interview.id)}>
                             Notify
                           </Button>
@@ -163,6 +170,11 @@ export function InterviewList({
         open={notifyingId !== null}
         onClose={() => setNotifyingId(null)}
         interviewId={notifyingId ?? ''}
+      />
+      <ScheduleInterviewForm
+        open={editingId !== null}
+        onClose={() => setEditingId(null)}
+        interview={interviews.find((i) => i.id === editingId)}
       />
     </>
   );

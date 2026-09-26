@@ -45,14 +45,16 @@ describe('POST /api/interviews/:id/complete (candidate status)', () => {
     return res.body;
   }
 
-  async function schedule(candidateId) {
+  // Give a second still-pending interview for the same interviewer a different `date`,
+  // or it is rejected as a double-booking.
+  async function schedule(candidateId, date = '2026-01-15T10:00:00.000Z') {
     const res = await request(app)
       .post('/api/interviews')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         candidateId,
         interviewerIds: [interviewer.id],
-        date: new Date('2026-01-15T10:00:00.000Z').toISOString(),
+        date: new Date(date).toISOString(),
         durationMinutes: 30,
         type: 'Phone',
       });
@@ -85,7 +87,7 @@ describe('POST /api/interviews/:id/complete (candidate status)', () => {
   it('keeps Interview Scheduled while another interview is still pending', async () => {
     const candidate = await createCandidate('Applied');
     const first = await schedule(candidate.id);
-    await schedule(candidate.id);
+    await schedule(candidate.id, '2026-01-16T10:00:00.000Z');
 
     const res = await complete(first.interview.id);
 
@@ -105,7 +107,7 @@ describe('POST /api/interviews/:id/complete (candidate status)', () => {
   it('moves the candidate to Interviewed when cancelling the last pending interview after one was completed', async () => {
     const candidate = await createCandidate('Applied');
     const first = await schedule(candidate.id);
-    const second = await schedule(candidate.id);
+    const second = await schedule(candidate.id, '2026-01-16T10:00:00.000Z');
     await complete(first.interview.id);
 
     const res = await request(app)

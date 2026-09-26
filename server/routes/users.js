@@ -24,6 +24,7 @@ const insertUser = db.prepare(
    VALUES (@id, @name, @email, @passwordHash, @role, @position)`,
 );
 const deleteUser = db.prepare('DELETE FROM users WHERE id = ?');
+const updateUserProfile = db.prepare('UPDATE users SET name = @name, position = @position WHERE id = @id');
 const updateUserPassword = db.prepare('UPDATE users SET password_hash = ? WHERE id = ?');
 const deleteSessionsForUser = db.prepare('DELETE FROM sessions WHERE user_id = ?');
 const countAdmins = db.prepare("SELECT COUNT(*) AS count FROM users WHERE role = 'admin'");
@@ -115,6 +116,72 @@ router.patch('/me/password', (req, res) => {
     entityType: 'user',
     entityId: req.user.id,
     entityLabel: req.user.name,
+  });
+  res.status(204).end();
+});
+
+// Registered after '/me/password' so 'me' is never captured as an :id.
+router.patch('/:id', requireRole('admin'), (req, res) => {
+  const existing = getUser.get(req.params.id);
+  if (!existing) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+  const patch = req.body ?? {};
+  if ('name' in patch && (typeof patch.name !== 'string' || !patch.name.trim())) {
+    return res.status(400).json({ error: 'name must be a non-empty string.' });
+  }
+  if ('position' in patch && patch.position != null && typeof patch.position !== 'string') {
+    return res.status(400).json({ error: 'position must be a string.' });
+  }
+
+  const merged = {
+    id: existing.id,
+    name: 'name' in patch ? patch.name.trim() : existing.name,
+    position: 'position' in patch ? patch.position?.trim() || null : existing.position,
+  };
+  updateUserProfile.run(merged);
+
+  const changes = [];
+  if (merged.name !== existing.name) changes.push(`name: ${existing.name} → ${merged.name}`);
+  if (merged.position !== existing.position) {
+    changes.push(`position: ${existing.position ?? '—'} → ${merged.position ?? '—'}`);
+  }
+  logActivity({
+    actor: req.user,
+    action: 'user.updated',
+    entityType: 'user',
+    entityId: existing.id,
+    entityLabel: merged.name,
+    details: changes.length > 0 ? changes.join('; ') : undefined,
+  });
+  res.json(serializeUser(getUser.get(existing.id)));
+});
+
+// Admin-set password for someone who forgot theirs. Kills their sessions in the same
+// transaction so a stolen token can't outlive the reset. The new password is never logged.
+router.post('/:id/reset-password', requireRole('admin'), (req, res) => {
+  const existing = getUser.get(req.params.id);
+  if (!existing) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+  if (existing.id === req.user.id) {
+    return res.status(400).json({ error: 'Use "change password" for your own account.' });
+  }
+  const { newPassword } = req.body ?? {};
+  if (typeof newPassword !== 'string' || newPassword.length < 8) {
+    return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+  }
+
+  db.transaction(() => {
+    updateUserPassword.run(bcrypt.hashSync(newPassword, 10), existing.id);
+    deleteSessionsForUser.run(existing.id);
+  })();
+  logActivity({
+    actor: req.user,
+    action: 'user.password_reset',
+    entityType: 'user',
+    entityId: existing.id,
+    entityLabel: existing.name,
   });
   res.status(204).end();
 });

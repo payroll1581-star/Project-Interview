@@ -41,6 +41,16 @@ const insertScore = db.prepare(
    VALUES (?, ?, ?, ?, ?)`,
 );
 
+const ROOM_MAX_LENGTH = 100;
+
+// null/undefined mean "no room" (and clear it on PATCH); anything else must be a short string.
+function validateRoom(room) {
+  if (room === undefined || room === null) return null;
+  if (typeof room !== 'string') return 'room must be a string.';
+  if (room.trim().length > ROOM_MAX_LENGTH) return `room must be at most ${ROOM_MAX_LENGTH} characters.`;
+  return null;
+}
+
 function normalizeRoom(room) {
   return typeof room === 'string' && room.trim() ? room.trim() : null;
 }
@@ -123,6 +133,141 @@ function buildCandidateConfirmationEmail({ candidate, interview }) {
   return lines.join('\n');
 }
 
+function buildInterviewUpdatedEmail({ greetingName, candidate, interview, previous, forCandidate }) {
+  const previouslyParts = [];
+  if (previous.date !== interview.date) {
+    previouslyParts.push(`date & time ${formatInterviewDateTime(previous.date)}`);
+  }
+  if (previous.room !== interview.room) previouslyParts.push(`room ${previous.room ?? '(none)'}`);
+  if (previous.location !== interview.location) {
+    previouslyParts.push(`location ${previous.location ?? '(none)'}`);
+  }
+
+  const forPosition = candidate.position ? ` for ${candidate.position}` : '';
+  const lines = [
+    `Hi ${greetingName},`,
+    '',
+    forCandidate
+      ? `Your ${interview.type.toLowerCase()} interview${forPosition} has been updated. Please note the new details:`
+      : `The ${interview.type.toLowerCase()} interview with ${candidate.name}${forPosition} has been updated:`,
+    '',
+    `Date & time: ${formatInterviewDateTime(interview.date)}`,
+    interview.room ? `Room: ${interview.room}` : null,
+    interview.location ? `Location: ${interview.location}` : null,
+    '',
+    `Previously: ${previouslyParts.join('; ')}`,
+    '',
+    forCandidate
+      ? 'If this does not work for you, please reply to this email.'
+      : 'Please update your calendar accordingly.',
+  ].filter((line) => line !== null);
+
+  return lines.join('\n');
+}
+
+// Fire-and-forget (like the scheduling confirmation): a slow or failing mail server must never
+// delay or fail the edit itself. Only counts are logged, never the recipients' addresses.
+function notifyInterviewUpdated({ actor, candidate, interview, previous }) {
+  const subject = `Interview updated — ${formatInterviewDateTime(interview.date)}`;
+  const mails = [];
+  if (candidate?.email) {
+    mails.push({
+      to: candidate.email,
+      text: buildInterviewUpdatedEmail({
+        greetingName: candidate.name,
+        candidate,
+        interview,
+        previous,
+        forCandidate: true,
+      }),
+    });
+  }
+  for (const { userId } of getInterviewerIds.all(interview.id)) {
+    const interviewer = getUserRow.get(userId);
+    if (!interviewer?.email) continue;
+    mails.push({
+      to: interviewer.email,
+      text: buildInterviewUpdatedEmail({
+        greetingName: interviewer.name,
+        candidate,
+        interview,
+        previous,
+        forCandidate: false,
+      }),
+    });
+  }
+  if (mails.length === 0) return;
+
+  Promise.allSettled(mails.map((mail) => sendMail({ to: mail.to, subject, text: mail.text }))).then((results) => {
+    const delivered = results.filter((r) => r.status === 'fulfilled' && r.value?.sent).length;
+    for (const r of results) {
+      if (r.status === 'rejected') console.error('[mailer] Failed to send interview update:', r.reason);
+    }
+    logActivity({
+      actor,
+      action: 'interview.update_notified',
+      entityType: 'interview',
+      entityId: interview.id,
+      entityLabel: candidate?.name,
+      details: `${delivered}/${mails.length} sent${delivered < mails.length ? ' (see server log for details)' : ''}`,
+    });
+  });
+}
+
+const listOtherScheduledInterviews = db.prepare(
+  `SELECT interviews.*, candidates.name AS candidate_name
+   FROM interviews JOIN candidates ON candidates.id = interviews.candidate_id
+   WHERE interviews.status = 'Scheduled' AND interviews.id != ?`,
+);
+
+// Interviews overlap when each starts before the other ends, so back-to-back slots are fine.
+// A conflict needs a shared interviewer or the same room (compared case- and space-insensitively).
+function findConflicts({ excludeId = '', date, durationMinutes, interviewerIds, room }) {
+  const start = new Date(date).getTime();
+  const end = start + Number(durationMinutes) * 60_000;
+  const roomKey = room ? room.trim().toLowerCase() : null;
+
+  const conflicts = [];
+  for (const other of listOtherScheduledInterviews.all(excludeId)) {
+    const otherStart = new Date(other.date).getTime();
+    const otherEnd = otherStart + other.duration_minutes * 60_000;
+    if (!(start < otherEnd && otherStart < end)) continue;
+
+    const otherInterviewerIds = getInterviewerIds.all(other.id).map((r) => r.userId);
+    const sharedInterviewerIds = interviewerIds.filter((id) => otherInterviewerIds.includes(id));
+    const sameRoom = Boolean(roomKey && other.room && other.room.trim().toLowerCase() === roomKey);
+    if (sharedInterviewerIds.length === 0 && !sameRoom) continue;
+
+    conflicts.push({
+      interviewId: other.id,
+      candidateName: other.candidate_name,
+      date: other.date,
+      durationMinutes: other.duration_minutes,
+      interviewerIds: sharedInterviewerIds,
+      room: sameRoom ? other.room : undefined,
+    });
+  }
+  return conflicts;
+}
+
+function conflictMessage(conflicts) {
+  const parts = conflicts.flatMap((c) => {
+    const when = formatInterviewDateTime(c.date);
+    const lines = [];
+    if (c.interviewerIds.length > 0) {
+      const names = c.interviewerIds.map((id) => getUserRow.get(id)?.name ?? 'An interviewer').join(', ');
+      lines.push(`${names} already booked for ${c.candidateName} on ${when}`);
+    }
+    if (c.room) lines.push(`room "${c.room}" is in use by ${c.candidateName} on ${when}`);
+    return lines;
+  });
+  return `Scheduling conflict: ${parts.join('; ')}.`;
+}
+
+function conflictResponse(res, conflicts) {
+  return res.status(409).json({ error: conflictMessage(conflicts), code: 'schedule_conflict', conflicts });
+}
+
 router.use(requireAuth);
 
 router.get('/', (req, res) => {
@@ -163,9 +308,22 @@ router.post('/', requireRole('admin'), (req, res) => {
       error: 'candidateId, interviewerIds (non-empty), date, durationMinutes, and type are required.',
     });
   }
+  const roomError = validateRoom(room);
+  if (roomError) {
+    return res.status(400).json({ error: roomError });
+  }
   const candidate = getCandidate.get(candidateId);
   if (!candidate) {
     return res.status(404).json({ error: 'Candidate not found.' });
+  }
+  if (req.body.allowConflict !== true) {
+    const conflicts = findConflicts({
+      date,
+      durationMinutes,
+      interviewerIds,
+      room: normalizeRoom(room),
+    });
+    if (conflicts.length > 0) return conflictResponse(res, conflicts);
   }
 
   const interview = {
@@ -410,15 +568,35 @@ router.patch('/:id', requireRole('admin'), (req, res) => {
     return res.status(404).json({ error: 'Interview not found.' });
   }
   const patch = req.body ?? {};
+  const roomError = 'room' in patch ? validateRoom(patch.room) : null;
+  if (roomError) {
+    return res.status(400).json({ error: roomError });
+  }
   const merged = {
     ...existing,
     date: patch.date ?? existing.date,
     duration_minutes: patch.durationMinutes ?? existing.duration_minutes,
     type: patch.type ?? existing.type,
-    location: 'location' in patch ? (patch.location ?? null) : existing.location,
+    location: 'location' in patch ? patch.location || null : existing.location,
     room: 'room' in patch ? normalizeRoom(patch.room) : existing.room,
-    notes: 'notes' in patch ? (patch.notes ?? null) : existing.notes,
+    notes: 'notes' in patch ? patch.notes || null : existing.notes,
   };
+
+  // Only re-check when the slot itself moved, so editing notes on a legacy double-booking still works.
+  const slotChanged =
+    merged.date !== existing.date ||
+    merged.duration_minutes !== existing.duration_minutes ||
+    merged.room !== existing.room;
+  if (existing.status === 'Scheduled' && slotChanged && patch.allowConflict !== true) {
+    const conflicts = findConflicts({
+      excludeId: existing.id,
+      date: merged.date,
+      durationMinutes: merged.duration_minutes,
+      interviewerIds: getInterviewerIds.all(existing.id).map((r) => r.userId),
+      room: merged.room,
+    });
+    if (conflicts.length > 0) return conflictResponse(res, conflicts);
+  }
 
   db.prepare(
     `UPDATE interviews SET date = @date, duration_minutes = @duration_minutes, type = @type,
@@ -426,6 +604,17 @@ router.patch('/:id', requireRole('admin'), (req, res) => {
   ).run(merged);
 
   const rescheduledCandidate = getCandidate.get(existing.candidate_id);
+  if (
+    existing.status === 'Scheduled' &&
+    (merged.date !== existing.date || merged.room !== existing.room || merged.location !== existing.location)
+  ) {
+    notifyInterviewUpdated({
+      actor: req.user,
+      candidate: rescheduledCandidate,
+      interview: merged,
+      previous: { date: existing.date, room: existing.room, location: existing.location },
+    });
+  }
   logActivity({
     actor: req.user,
     action: merged.date !== existing.date ? 'interview.rescheduled' : 'interview.updated',

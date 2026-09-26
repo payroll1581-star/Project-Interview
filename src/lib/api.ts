@@ -16,6 +16,23 @@ interface RequestOptions {
   body?: unknown;
 }
 
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+async function toApiError(res: Response): Promise<ApiError> {
+  const payload = await res.json().catch(() => null);
+  return new ApiError(payload?.error ?? `Request failed with status ${res.status}`, res.status, payload?.code);
+}
+
 async function request<T>(method: string, path: string, options?: RequestOptions): Promise<T> {
   const token = getToken();
   const res = await fetch(`/api${path}`, {
@@ -28,8 +45,7 @@ async function request<T>(method: string, path: string, options?: RequestOptions
   });
 
   if (!res.ok) {
-    const payload = await res.json().catch(() => null);
-    throw new Error(payload?.error ?? `Request failed with status ${res.status}`);
+    throw await toApiError(res);
   }
   if (res.status === 204) {
     return undefined as T;
@@ -45,8 +61,7 @@ async function upload<T>(path: string, formData: FormData): Promise<T> {
     body: formData,
   });
   if (!res.ok) {
-    const payload = await res.json().catch(() => null);
-    throw new Error(payload?.error ?? `Request failed with status ${res.status}`);
+    throw await toApiError(res);
   }
   return res.json() as Promise<T>;
 }
@@ -59,8 +74,7 @@ async function downloadBlob(path: string): Promise<Blob> {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) {
-    const payload = await res.json().catch(() => null);
-    throw new Error(payload?.error ?? `Request failed with status ${res.status}`);
+    throw await toApiError(res);
   }
   return res.blob();
 }

@@ -8,22 +8,23 @@ import type { AppUser } from '../../types';
 interface InterviewerFormModalProps {
   open: boolean;
   onClose: () => void;
+  interviewer?: AppUser;
 }
 
-export function InterviewerFormModal({ open, onClose }: InterviewerFormModalProps) {
+export function InterviewerFormModal({ open, onClose, interviewer }: InterviewerFormModalProps) {
   return (
-    <Modal open={open} onClose={onClose} title="Add Interviewer">
-      {open && <InterviewerForm onClose={onClose} />}
+    <Modal open={open} onClose={onClose} title={interviewer ? 'Edit Interviewer' : 'Add Interviewer'}>
+      {open && <InterviewerForm onClose={onClose} interviewer={interviewer} />}
     </Modal>
   );
 }
 
-function InterviewerForm({ onClose }: { onClose: () => void }) {
-  const { addInterviewer } = useAppData();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+function InterviewerForm({ onClose, interviewer }: { onClose: () => void; interviewer?: AppUser }) {
+  const { addInterviewer, updateInterviewer } = useAppData();
+  const [name, setName] = useState(interviewer?.name ?? '');
+  const [email, setEmail] = useState(interviewer?.email ?? '');
   const [password, setPassword] = useState('');
-  const [position, setPosition] = useState('');
+  const [position, setPosition] = useState(interviewer?.position ?? '');
   const [created, setCreated] = useState<AppUser | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,8 +34,14 @@ function InterviewerForm({ onClose }: { onClose: () => void }) {
     setError(null);
     setIsSubmitting(true);
     try {
-      const user = await addInterviewer({ name, email, password, position: position.trim() || undefined });
-      setCreated(user);
+      if (interviewer) {
+        // An empty position clears it; undefined would be dropped from the request body.
+        await updateInterviewer(interviewer.id, { name, position: position.trim() });
+        onClose();
+      } else {
+        const user = await addInterviewer({ name, email, password, position: position.trim() || undefined });
+        setCreated(user);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
@@ -72,16 +79,19 @@ function InterviewerForm({ onClose }: { onClose: () => void }) {
         label="Email"
         type="email"
         required
+        disabled={Boolean(interviewer)}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
-      <Input
-        label="Password"
-        type="text"
-        required
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
+      {!interviewer && (
+        <Input
+          label="Password"
+          type="text"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+      )}
       <Input
         label="Position"
         value={position}
@@ -93,7 +103,7 @@ function InterviewerForm({ onClose }: { onClose: () => void }) {
           Cancel
         </Button>
         <Button type="submit" disabled={isSubmitting}>
-          Add interviewer
+          {interviewer ? 'Save changes' : 'Add interviewer'}
         </Button>
       </div>
     </form>
