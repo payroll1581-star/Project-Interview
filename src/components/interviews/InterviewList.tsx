@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
+import clsx from 'clsx';
 import { CalendarClock } from 'lucide-react';
 import type { Interview } from '../../types';
 import { useAppData } from '../../context/useAppData';
@@ -19,11 +20,15 @@ export function InterviewList({
   showCandidate = true,
   compact = false,
   emptyMessage = 'No interviews to show.',
+  selectedInterviewId,
+  onSelectInterview,
 }: {
   interviews: Interview[];
   showCandidate?: boolean;
   compact?: boolean;
   emptyMessage?: string;
+  selectedInterviewId?: string;
+  onSelectInterview?: (id: string) => void;
 }) {
   const { getCandidateById, getUserById, cancelInterview } = useAppData();
   const { currentUser } = useAuth();
@@ -70,7 +75,22 @@ export function InterviewList({
               .join(', ');
             const canComplete = isAdmin || (currentUser && interview.interviewerIds.includes(currentUser.id));
             return (
-              <TableRow key={interview.id}>
+              <TableRow
+                key={interview.id}
+                className={clsx(
+                  onSelectInterview && 'cursor-pointer',
+                  selectedInterviewId === interview.id && 'bg-indigo-50 hover:bg-indigo-50',
+                )}
+                onClick={
+                  onSelectInterview
+                    ? (e) => {
+                        // Clicks on the row's own buttons and links keep doing their own job.
+                        if ((e.target as HTMLElement).closest('button, a')) return;
+                        onSelectInterview(interview.id);
+                      }
+                    : undefined
+                }
+              >
                 {showCandidate && (
                   <TableCell className="font-medium text-slate-900">
                     {candidate?.name ?? 'Unknown candidate'}

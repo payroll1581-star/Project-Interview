@@ -10,6 +10,8 @@ import { CandidatePipelineStepper } from '../components/candidates/CandidatePipe
 import { CandidateFormModal } from '../components/candidates/CandidateFormModal';
 import { ScheduleInterviewForm } from '../components/interviews/ScheduleInterviewForm';
 import { InterviewList } from '../components/interviews/InterviewList';
+import { InterviewRoundsPanel } from '../components/interviews/InterviewRoundsPanel';
+import { interviewRounds, resolveSelectedInterview } from '../lib/interviewRounds';
 import { formatDate } from '../lib/date';
 
 export function CandidateDetailPage() {
@@ -19,6 +21,7 @@ export function CandidateDetailPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null);
 
   const candidate = candidateId ? getCandidateById(candidateId) : undefined;
 
@@ -35,6 +38,8 @@ export function CandidateDetailPage() {
   }
 
   const interviews = getInterviewsForCandidate(candidate.id);
+  const showRounds = interviewRounds(interviews).length >= 2;
+  const selectedInterview = resolveSelectedInterview(interviews, selectedInterviewId);
   const scoreRatios = interviews
     .filter((i) => i.status === 'Completed' && i.evaluation)
     .map((i) => i.evaluation!.totalScore / i.evaluation!.maxScore);
@@ -135,10 +140,17 @@ export function CandidateDetailPage() {
           )}
         </CardHeader>
         <CardContent className="px-0 py-0">
+          <InterviewRoundsPanel
+            interviews={interviews}
+            selectedId={selectedInterviewId}
+            onSelect={setSelectedInterviewId}
+          />
           <InterviewList
             interviews={interviews}
             showCandidate={false}
             emptyMessage="No interviews scheduled yet for this candidate."
+            selectedInterviewId={showRounds ? selectedInterview?.id : undefined}
+            onSelectInterview={showRounds ? setSelectedInterviewId : undefined}
           />
         </CardContent>
       </Card>
