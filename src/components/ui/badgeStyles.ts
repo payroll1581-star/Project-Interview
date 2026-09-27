@@ -18,6 +18,17 @@ export const solidColorClasses: Record<BadgeColor, string> = {
   violet: 'bg-violet-500',
 };
 
+// Tailwind needs each class name to appear literally in source to generate its CSS, so this
+// can't be derived from solidColorClasses (e.g. via string replace) at runtime.
+export const borderColorClasses: Record<BadgeColor, string> = {
+  slate: 'border-slate-400',
+  blue: 'border-blue-500',
+  amber: 'border-amber-500',
+  emerald: 'border-emerald-500',
+  red: 'border-red-500',
+  violet: 'border-violet-500',
+};
+
 export const strokeColorClasses: Record<BadgeColor, string> = {
   slate: 'stroke-slate-400',
   blue: 'stroke-blue-500',

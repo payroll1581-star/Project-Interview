@@ -1,6 +1,8 @@
 import { Link } from 'react-router';
+import clsx from 'clsx';
 import { SelectableStepper, type SelectableStep } from '../ui/SelectableStepper';
 import { EvaluationResultPill, InterviewStatusPill } from '../ui/StatusPill';
+import { borderColorClasses } from '../ui/badgeStyles';
 import { useAppData } from '../../context/useAppData';
 import { evaluationResultStyles, interviewStatusStyles } from '../../lib/status';
 import { interviewRounds, resolveSelectedInterview } from '../../lib/interviewRounds';
@@ -39,6 +41,12 @@ export function InterviewRoundsPanel({ interviews, selectedId, onSelect }: Inter
     ? selected.interviewerIds.map((id) => getUserById(id)?.name ?? 'Unknown').join(', ')
     : '';
 
+  const selectedTone = selected?.evaluation
+    ? evaluationResultStyles[selected.evaluation.result]
+    : selected
+      ? interviewStatusStyles[selected.status]
+      : undefined;
+
   return (
     <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-4">
       <SelectableStepper
@@ -48,8 +56,10 @@ export function InterviewRoundsPanel({ interviews, selectedId, onSelect }: Inter
         onSelect={onSelect}
       />
 
-      {selected && (
-        <div aria-live="polite" className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-700">
+      {selected && selectedTone && (
+        // The left accent bar echoes the selected step's outcome color, tying this panel back to
+        // the step above it without needing to track the step's scroll position.
+        <div aria-live="polite" className={clsx('border-l-4 pl-4 text-sm text-slate-700', borderColorClasses[selectedTone])}>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="font-semibold text-slate-900">{selected.type}</span>
             <span className="text-slate-500">{formatDateTime(selected.date)}</span>
