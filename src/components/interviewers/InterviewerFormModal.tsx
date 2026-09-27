@@ -83,6 +83,12 @@ function InterviewerForm({ onClose, interviewer }: { onClose: () => void; interv
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
+      {interviewer && (
+        <p className="-mt-2 text-xs text-slate-500">
+          The email is the login name and can't be changed here. To use a different email, remove this interviewer
+          and add them again.
+        </p>
+      )}
       {!interviewer && (
         <Input
           label="Password"
