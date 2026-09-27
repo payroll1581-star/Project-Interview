@@ -35,7 +35,14 @@ export function AppRoutes() {
           }
         >
           <Route index element={<HomeRedirect />} />
-          <Route path="my-interviews" element={<MyInterviewsPage />} />
+          <Route
+            path="my-interviews"
+            element={
+              <RequireAuth roles={['interviewer']}>
+                <MyInterviewsPage />
+              </RequireAuth>
+            }
+          />
           <Route
             path="dashboard"
             element={
