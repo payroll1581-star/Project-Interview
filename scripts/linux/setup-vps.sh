@@ -24,7 +24,9 @@ fi
 id "$APP_USER" >/dev/null 2>&1 || useradd --system --create-home --home-dir "$BASE" --shell /usr/sbin/nologin "$APP_USER"
 mkdir -p "$DATA_DIR/resumes" "$BACKUP_DIR"
 
-if [ -d "$APP_DIR/.git" ]; then git -C "$APP_DIR" pull --ff-only; else git clone "$REPO_URL" "$APP_DIR"; fi
+# Run git as $APP_USER: the checkout is owned by it, and root would hit "dubious ownership" on re-runs
+chown "$APP_USER:$APP_USER" "$BASE"
+if [ -d "$APP_DIR/.git" ]; then sudo -u "$APP_USER" git -C "$APP_DIR" pull --ff-only; else sudo -u "$APP_USER" git clone "$REPO_URL" "$APP_DIR"; fi
 
 # .env is created once; later runs never overwrite it
 if [ ! -f "$APP_DIR/.env" ]; then
