@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button';
 import { ResumeUpload } from '../components/candidates/ResumeUpload';
 import { CandidateStatusSelect } from '../components/candidates/CandidateStatusSelect';
+import { CandidateTimeline } from '../components/candidates/CandidateTimeline';
 import { CandidatePipelineStepper } from '../components/candidates/CandidatePipelineStepper';
 import { CandidateFormModal } from '../components/candidates/CandidateFormModal';
 import { ScheduleInterviewForm } from '../components/interviews/ScheduleInterviewForm';
@@ -126,6 +127,15 @@ export function CandidateDetailPage() {
           <div className="max-w-xs">
             <CandidateStatusSelect candidateId={candidate.id} status={candidate.status} />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Status timeline</CardTitle>
+        </CardHeader>
+        <CardContent className="px-0 py-0">
+          <CandidateTimeline candidate={candidate} />
         </CardContent>
       </Card>
 

@@ -30,6 +30,11 @@ const canInterviewerViewCandidate = db.prepare(
    JOIN interview_interviewers ON interview_interviewers.interview_id = interviews.id
    WHERE interviews.candidate_id = ? AND interview_interviewers.user_id = ?`,
 );
+const listStatusChanges = db.prepare(
+  `SELECT id, actor_name, details, created_at FROM activity_log
+   WHERE entity_type = 'candidate' AND entity_id = ? AND action = 'candidate.status_changed'
+   ORDER BY created_at ASC, rowid ASC`,
+);
 const setResumeFile = db.prepare(
   'UPDATE candidates SET resume_url = ?, resume_filename = ? WHERE id = ?',
 );
@@ -164,6 +169,25 @@ router.patch('/:id', requireRole('admin'), (req, res) => {
   }
 
   res.json(serializeCandidate(getCandidate.get(req.params.id)));
+});
+
+// Status history for the candidate timeline, built from the activity log's "A → B" entries.
+router.get('/:id/history', (req, res) => {
+  const existing = getCandidate.get(req.params.id);
+  if (!existing) {
+    return res.status(404).json({ error: 'Candidate not found.' });
+  }
+  if (req.user.role !== 'admin' && !canInterviewerViewCandidate.get(req.params.id, req.user.id)) {
+    return res.status(403).json({ error: 'You do not have access to this candidate.' });
+  }
+
+  const changes = listStatusChanges.all(req.params.id).flatMap((row) => {
+    const [from, to] = (row.details ?? '').split(' → ');
+    return from && to
+      ? [{ id: row.id, from, to, actorName: row.actor_name, createdAt: row.created_at }]
+      : [];
+  });
+  res.json(changes);
 });
 
 router.delete('/:id', requireRole('admin'), (req, res) => {

@@ -1,4 +1,4 @@
-export type { Candidate, CandidateStatus } from './candidate';
+export type { Candidate, CandidateStatus, CandidateStatusChange } from './candidate';
 export type {
   Interview,
   InterviewType,

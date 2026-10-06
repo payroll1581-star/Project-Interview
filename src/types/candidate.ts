@@ -17,3 +17,11 @@ export interface Candidate {
   notes?: string;
   createdAt: string;
 }
+
+export interface CandidateStatusChange {
+  id: string;
+  from: CandidateStatus;
+  to: CandidateStatus;
+  actorName: string;
+  createdAt: string;
+}

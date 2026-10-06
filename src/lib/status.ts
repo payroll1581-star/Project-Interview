@@ -48,3 +48,12 @@ export function computeEvaluationResult(totalScore: number, maxScore: number): E
 
 export const evaluationResultGuide =
   '72% or higher to Hire · 60-71% to Compare with other applicants · below 60% to Reject.';
+
+export const candidateStatusMessages: Record<CandidateStatus, string> = {
+  Applied: 'Application received',
+  Screening: 'Application under review',
+  'Interview Scheduled': 'Interview scheduled',
+  Interviewed: 'Interview completed',
+  Offer: 'Offer extended — accepted for hire',
+  Rejected: 'Application rejected',
+};
