@@ -12,6 +12,7 @@
     "db:backup": "node server/backup.js",
     "db:purge": "node server/purge.js",
     "build": "tsc -b && vite build",
+    "build:gas": "node scripts/build-gas.mjs",
     "lint": "oxlint",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -46,6 +47,7 @@
     "supertest": "^7.2.2",
     "typescript": "~6.0.2",
     "vite": "^8.2.2",
+    "vite-plugin-singlefile": "^2.3.3",
     "vitest": "^5.0.1"
   }
 }

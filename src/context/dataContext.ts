@@ -53,10 +53,18 @@ export interface AppDataContextValue {
   getInterviewsForCandidate: (candidateId: string) => Interview[];
   getInterviewsForInterviewer: (interviewerId: string) => Interview[];
   getUserById: (id: string) => AppUser | undefined;
-  addInterviewer: (input: { name: string; email: string; password: string; position?: string }) => Promise<AppUser>;
+  addInterviewer: (input: {
+    name: string;
+    email: string;
+    password: string;
+    position?: string;
+    mrfFile?: File;
+  }) => Promise<AppUser>;
   updateInterviewer: (id: string, patch: { name?: string; position?: string }) => Promise<void>;
   resetInterviewerPassword: (id: string, newPassword: string) => Promise<void>;
   removeInterviewer: (id: string) => Promise<void>;
+  uploadInterviewerMrf: (id: string, file: File) => Promise<void>;
+  removeInterviewerMrf: (id: string) => Promise<void>;
   revokeUserSessions: (id: string) => Promise<void>;
   addEvaluationSection: (name: string) => Promise<void>;
   renameEvaluationSection: (id: string, name: string) => Promise<void>;

@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
+import { MrfFileInput } from './MrfFileInput';
+import { MrfManager } from './MrfManager';
 import { useAppData } from '../../context/useAppData';
 import type { AppUser } from '../../types';
 
@@ -25,6 +27,7 @@ function InterviewerForm({ onClose, interviewer }: { onClose: () => void; interv
   const [email, setEmail] = useState(interviewer?.email ?? '');
   const [password, setPassword] = useState('');
   const [position, setPosition] = useState(interviewer?.position ?? '');
+  const [mrfFile, setMrfFile] = useState<File | null>(null);
   const [created, setCreated] = useState<AppUser | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,7 +42,13 @@ function InterviewerForm({ onClose, interviewer }: { onClose: () => void; interv
         await updateInterviewer(interviewer.id, { name, position: position.trim() });
         onClose();
       } else {
-        const user = await addInterviewer({ name, email, password, position: position.trim() || undefined });
+        const user = await addInterviewer({
+          name,
+          email,
+          password,
+          position: position.trim() || undefined,
+          mrfFile: mrfFile ?? undefined,
+        });
         setCreated(user);
       }
     } catch (err) {
@@ -103,6 +112,11 @@ function InterviewerForm({ onClose, interviewer }: { onClose: () => void; interv
         value={position}
         onChange={(e) => setPosition(e.target.value)}
       />
+      {interviewer ? (
+        <MrfManager interviewer={interviewer} />
+      ) : (
+        <MrfFileInput id="interviewer-mrf" file={mrfFile} onChange={setMrfFile} disabled={isSubmitting} />
+      )}
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onClose}>

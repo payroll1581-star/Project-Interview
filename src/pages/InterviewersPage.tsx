@@ -60,6 +60,7 @@ export function InterviewersPage() {
                   <TableHeaderCell>Name</TableHeaderCell>
                   <TableHeaderCell>Position</TableHeaderCell>
                   <TableHeaderCell>Email</TableHeaderCell>
+                  <TableHeaderCell>MRF</TableHeaderCell>
                   <TableHeaderCell>Actions</TableHeaderCell>
                 </TableRow>
               </TableHead>
@@ -69,6 +70,20 @@ export function InterviewersPage() {
                     <TableCell className="font-medium text-slate-900">{interviewer.name}</TableCell>
                     <TableCell>{interviewer.position ?? '—'}</TableCell>
                     <TableCell>{interviewer.email}</TableCell>
+                    <TableCell>
+                      {interviewer.mrfUrl ? (
+                        <a
+                          href={interviewer.mrfUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-indigo-600 hover:underline"
+                        >
+                          View PDF
+                        </a>
+                      ) : (
+                        <span className="text-slate-400">None</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button size="sm" variant="secondary" onClick={() => setEditingId(interviewer.id)}>

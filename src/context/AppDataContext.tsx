@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useReducer, useState, type ReactNode } from 'react';
 import type { AppUser, Candidate, CandidateStatus, EvaluationSection, Interview } from '../types';
-import { api } from '../lib/api';
+import { api, fileToPayload } from '../lib/api';
 import { formatMonthLabel, isThisWeek, monthKey, sortByDateAsc } from '../lib/date';
 import { AppDataContext, type AppDataContextValue, type InterviewTrendPoint } from './dataContext';
 
@@ -94,12 +94,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      const [candidates, interviews, users, evaluationTemplate] = await Promise.all([
-        api.get<Candidate[]>('/candidates'),
-        api.get<Interview[]>('/interviews'),
-        api.get<AppUser[]>('/users'),
-        api.get<EvaluationSection[]>('/evaluation-template'),
-      ]);
+      // One round trip: each Apps Script call costs ~1s, so four parallel requests would be slow.
+      const { candidates, interviews, users, evaluationTemplate } = await api.get<{
+        candidates: Candidate[];
+        interviews: Interview[];
+        users: AppUser[];
+        evaluationTemplate: EvaluationSection[];
+      }>('/bootstrap');
       dispatch({ type: 'SET_ALL', candidates, interviews, users, evaluationTemplate });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data.');
@@ -118,8 +119,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const getCandidateById = (id: string) => state.candidates.find((c) => c.id === id);
     const getUserById = (id: string) => state.users.find((u) => u.id === id);
 
-    const addInterviewer: AppDataContextValue['addInterviewer'] = async (input) => {
-      const user = await api.post<AppUser>('/users', input);
+    const addInterviewer: AppDataContextValue['addInterviewer'] = async ({ mrfFile, ...input }) => {
+      // The optional MRF travels in the same request, so a rejected file never leaves an account behind.
+      const mrf = mrfFile ? await fileToPayload(mrfFile) : undefined;
+      const user = await api.post<AppUser>('/users', { ...input, mrf });
       dispatch({ type: 'ADD_USER', user });
       return user;
     };
@@ -136,6 +139,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const removeInterviewer: AppDataContextValue['removeInterviewer'] = async (id) => {
       await api.delete(`/users/${id}`);
       dispatch({ type: 'REMOVE_USER', id });
+    };
+
+    const uploadInterviewerMrf: AppDataContextValue['uploadInterviewerMrf'] = async (id, file) => {
+      const user = await api.post<AppUser>(`/users/${id}/mrf`, await fileToPayload(file));
+      dispatch({ type: 'UPDATE_USER', id, user });
+    };
+
+    const removeInterviewerMrf: AppDataContextValue['removeInterviewerMrf'] = async (id) => {
+      const user = await api.delete<AppUser>(`/users/${id}/mrf`);
+      dispatch({ type: 'UPDATE_USER', id, user });
     };
 
     const revokeUserSessions: AppDataContextValue['revokeUserSessions'] = async (id) => {
@@ -327,6 +340,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       updateInterviewer,
       resetInterviewerPassword,
       removeInterviewer,
+      uploadInterviewerMrf,
+      removeInterviewerMrf,
       revokeUserSessions,
       addEvaluationSection,
       renameEvaluationSection,

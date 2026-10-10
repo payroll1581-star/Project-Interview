@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router';
+import { HashRouter, Route, Routes } from 'react-router';
 import { AppLayout } from './components/layout/AppLayout';
 import { RequireAuth } from './components/auth/RequireAuth';
 import { HomeRedirect } from './components/auth/HomeRedirect';
@@ -16,7 +16,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 
 export function AppRoutes() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route path="login" element={<LoginPage />} />
         <Route
@@ -102,6 +102,6 @@ export function AppRoutes() {
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
